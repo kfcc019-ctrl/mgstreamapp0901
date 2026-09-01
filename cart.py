@@ -1,10 +1,10 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="3D 포켓몬 카트라이더", layout="wide")
+st.set_page_config(page_title="3D 새망이 카트라이더", layout="wide")
 
-st.title("⚡ 3D 포켓몬 카트라이더: 챔피언십")
-st.write("난이도를 선택한 후 **레이스 시작**을 누르세요! (방향키: 조향/가속, **Space바**: 백만볼트 부스터)")
+st.title("🐤 3D 새마을금고 새망이 카트라이더")
+st.write("난이도를 선택한 후 **레이스 시작**을 누르세요! (방향키: 조향/가속, **Space바**: 부스터, **ESC**: 일시정지)")
 
 game_html = """<!DOCTYPE html>
 <html>
@@ -21,22 +21,22 @@ game_html = """<!DOCTYPE html>
 
         #startScreen {
             pointer-events: auto; background: rgba(15, 15, 25, 0.85); padding: 25px 45px;
-            border-radius: 20px; text-align: center; border: 3px solid #FFD700;
-            box-shadow: 0 0 25px rgba(255,215,0,0.4); backdrop-filter: blur(4px);
+            border-radius: 20px; text-align: center; border: 3px solid #00B0FF;
+            box-shadow: 0 0 25px rgba(0,176,255,0.4); backdrop-filter: blur(4px);
         }
 
         .diff-btn {
             padding: 10px 25px; margin: 0 5px; font-size: 18px; font-weight: bold;
             border: 2px solid #555; background: #222; color: white; border-radius: 8px; cursor: pointer;
         }
-        .diff-btn.active { background: #FFD700; color: black; border-color: #FFD700; }
+        .diff-btn.active { background: #00B0FF; color: black; border-color: #00B0FF; }
         
         #startBtn {
             margin-top: 20px; padding: 14px 38px; font-size: 24px; font-weight: bold;
-            color: #111; background: #00E5FF; border: none; border-radius: 50px;
-            cursor: pointer; box-shadow: 0 6px 20px rgba(0,229,255,0.5); transition: 0.2s;
+            color: #111; background: #FFD700; border: none; border-radius: 50px;
+            cursor: pointer; box-shadow: 0 6px 20px rgba(255,215,0,0.5); transition: 0.2s;
         }
-        #startBtn:hover { transform: scale(1.05); background: #80F4FF; }
+        #startBtn:hover { transform: scale(1.05); background: #FFF066; }
         
         #countdown {
             font-size: 120px; font-weight: 900; text-shadow: 0 0 30px rgba(0,0,0,0.9);
@@ -45,20 +45,28 @@ game_html = """<!DOCTYPE html>
         
         #hud {
             position: absolute; top: 20px; left: 20px; text-align: left;
-            font-size: 20px; font-weight: bold; background: rgba(0,0,0,0.8);
-            padding: 15px 25px; border-radius: 12px; border: 2px solid #666; display: none;
+            font-size: 18px; font-weight: bold; background: rgba(0,0,0,0.8);
+            padding: 15px 25px; border-radius: 12px; border: 2px solid #00B0FF; display: none;
+            pointer-events: auto;
+        }
+
+        .hud-btn {
+            margin-top: 10px; padding: 6px 14px; font-size: 14px; font-weight: bold;
+            background: #FF9800; color: white; border: none; border-radius: 6px; cursor: pointer;
         }
         
-        #winnerModal {
+        .modal-popup {
             position: absolute; display: none; pointer-events: auto;
-            background: rgba(15, 15, 25, 0.95); padding: 40px 60px;
-            border-radius: 20px; text-align: center; border: 3px solid #FFD700;
-            box-shadow: 0 0 30px rgba(255,215,0,0.5);
+            background: rgba(15, 15, 25, 0.95); padding: 35px 55px;
+            border-radius: 20px; text-align: center; border: 3px solid #00B0FF;
+            box-shadow: 0 0 30px rgba(0,176,255,0.5); backdrop-filter: blur(5px);
         }
-        #restartBtn {
-            margin-top: 20px; padding: 12px 30px; font-size: 20px; font-weight: bold;
-            background: #1E90FF; color: white; border: none; border-radius: 10px; cursor: pointer;
+
+        .modal-btn {
+            margin: 10px 8px 0 8px; padding: 12px 26px; font-size: 18px; font-weight: bold;
+            color: white; border: none; border-radius: 10px; cursor: pointer; transition: 0.2s;
         }
+        .modal-btn:hover { transform: scale(1.05); }
     </style>
 </head>
 <body>
@@ -66,7 +74,7 @@ game_html = """<!DOCTYPE html>
     
     <div id="ui-overlay">
         <div id="startScreen">
-            <h2 style="color:#FFD700; margin-top:0;">🎮 AI 난이도 선택</h2>
+            <h2 style="color:#00B0FF; margin-top:0;">🐤 새망이 레이스 난이도</h2>
             <div style="margin-bottom: 15px;">
                 <button class="diff-btn" onclick="selectDiff('EASY', this)">하 (쉬움)</button>
                 <button class="diff-btn active" onclick="selectDiff('MEDIUM', this)">중 (보통)</button>
@@ -81,12 +89,22 @@ game_html = """<!DOCTYPE html>
             <div>🏁 순위: <span id="rankText" style="color:#FFD700;">1</span> / 7</div>
             <div>🔄 바퀴: <span id="lapText" style="color:#00E5FF;">1</span> / 3</div>
             <div>⚡ 부스터: <span id="boostText" style="color:#00FF00;">사용 가능 (Space)</span></div>
+            <button class="hud-btn" onclick="pauseGame()">⏸️ 일시정지 (ESC)</button>
         </div>
 
-        <div id="winnerModal">
-            <h1 id="winnerText" style="color:#FFD700; margin:0 0 15px 0;">🎉 피카츄 승리!</h1>
+        <!-- 일시정지 모달 -->
+        <div id="pauseModal" class="modal-popup">
+            <h1 style="color:#00B0FF; margin:0 0 15px 0;">⏸️ 일시정지</h1>
+            <p style="font-size:18px; margin-bottom:20px;">경기가 잠시 멈췄습니다.</p>
+            <button class="modal-btn" style="background:#4CAF50;" onclick="resumeGame()">▶️ 다시시작</button>
+            <button class="modal-btn" style="background:#E53935;" onclick="restartGame()">🔄 처음으로</button>
+        </div>
+
+        <!-- 완주 결과 모달 -->
+        <div id="winnerModal" class="modal-popup">
+            <h1 id="winnerText" style="color:#FFD700; margin:0 0 15px 0;">🎉 새망이 승리!</h1>
             <p id="winnerSubText" style="font-size:20px; margin:0;">3바퀴 완주 성공!</p>
-            <button id="restartBtn" onclick="location.reload()">다시 경기하기</button>
+            <button class="modal-btn" style="background:#1E90FF;" onclick="restartGame()">🔄 다시 경기하기</button>
         </div>
     </div>
 
@@ -97,14 +115,14 @@ game_html = """<!DOCTYPE html>
         let selectedDifficulty = 'MEDIUM';
         let rankCounter = 0;
 
-        const POKEMONS = [
-            { id: "pikachu", name: "피카츄⚡", color: 0xFFD700, isPlayer: true },
-            { id: "bulbasaur", name: "이상해씨🌱", color: 0x30A727, isPlayer: false },
-            { id: "charmander", name: "파이리🔥", color: 0xFF5722, isPlayer: false },
-            { id: "squirtle", name: "꼬북이💧", color: 0x29B6F6, isPlayer: false },
-            { id: "slowpoke", name: "야돈🌀", color: 0xF48FB1, isPlayer: false },
-            { id: "gastly", name: "고오스👻", color: 0x7E57C2, isPlayer: false },
-            { id: "meowth", name: "냐옹🐾", color: 0xFFE082, isPlayer: false }
+        const CHARACTERS = [
+            { id: "leader", name: "대장 새망이⚡", bodyColor: 0x29B6F6, isPlayer: true },
+            { id: "builder", name: "건설 새망이🔨", bodyColor: 0x29B6F6, isPlayer: false },
+            { id: "scholar", name: "학자 새망이🎓", bodyColor: 0x29B6F6, isPlayer: false },
+            { id: "artist", name: "화가 새망이🎨", bodyColor: 0x29B6F6, isPlayer: false },
+            { id: "farmer", name: "농부 새망이🌾", bodyColor: 0x29B6F6, isPlayer: false },
+            { id: "suit", name: "신사 새망이💼", bodyColor: 0x29B6F6, isPlayer: false },
+            { id: "rocket", name: "우주 새망이🚀", bodyColor: 0x29B6F6, isPlayer: false }
         ];
 
         let karts = [];
@@ -121,14 +139,14 @@ game_html = """<!DOCTYPE html>
 
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x64B5F6);
+            scene.background = new THREE.Color(0x81D4FA);
 
-            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 2000);
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 2500);
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.getElementById("gameCanvas").appendChild(renderer.domElement);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
             scene.add(ambientLight);
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
             dirLight.position.set(200, 400, 100);
@@ -137,7 +155,7 @@ game_html = """<!DOCTYPE html>
             createCleanTrackAndWalls();
             createStartFinishLine();
             createEnvironment();
-            spawnPokemonKarts();
+            spawnBirdKarts();
 
             updateCamera();
 
@@ -208,7 +226,7 @@ game_html = """<!DOCTYPE html>
             const roadMat = new THREE.MeshStandardMaterial({ color: 0x2A2A2A, side: THREE.DoubleSide, roughness: 0.8 });
             scene.add(new THREE.Mesh(roadGeom, roadMat));
 
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0xE53935, side: THREE.DoubleSide });
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x00B0FF, side: THREE.DoubleSide });
 
             const leftWallGeom = new THREE.BufferGeometry();
             leftWallGeom.setAttribute('position', new THREE.Float32BufferAttribute(leftWallPos, 3));
@@ -235,29 +253,151 @@ game_html = """<!DOCTYPE html>
 
             const archGroup = new THREE.Group();
             const poleGeom = new THREE.CylinderGeometry(0.8, 0.8, 14);
-            const poleMat = new THREE.MeshStandardMaterial({ color: 0xFFD700 });
+            const poleMat = new THREE.MeshStandardMaterial({ color: 0x00B0FF });
             
             const p1 = new THREE.Mesh(poleGeom, poleMat); p1.position.set(-15, 7, 0);
             const p2 = new THREE.Mesh(poleGeom, poleMat); p2.position.set(15, 7, 0);
-            const top = new THREE.Mesh(new THREE.BoxGeometry(32, 2, 2), poleMat); top.position.set(0, 13, 0);
+            
+            // 새마을금고 스타트 아치 간판
+            const top = new THREE.Mesh(new THREE.BoxGeometry(32, 3, 2), new THREE.MeshStandardMaterial({ color: 0x0288D1 }));
+            top.position.set(0, 13, 0);
 
-            archGroup.add(p1, p2, top);
+            const signBoard = new THREE.Mesh(new THREE.BoxGeometry(20, 1.8, 2.2), new THREE.MeshStandardMaterial({ color: 0xFFD700 }));
+            signBoard.position.set(0, 13, 0);
+
+            archGroup.add(p1, p2, top, signBoard);
             archGroup.position.set(startPt.x, 0, startPt.z);
             archGroup.rotation.y = angle + Math.PI / 2;
             scene.add(archGroup);
         }
 
+        // 새마을금고 건물, ATM, 대형 빌보드 전광판 및 도심 가로수 배경 구축
         function createEnvironment() {
             const grass = new THREE.Mesh(
-                new THREE.PlaneGeometry(2500, 2500),
+                new THREE.PlaneGeometry(3000, 3000),
                 new THREE.MeshStandardMaterial({ color: 0x4CAF50 })
             );
             grass.rotation.x = -Math.PI / 2;
             grass.position.y = 0;
             scene.add(grass);
+
+            // 1. 새마을금고 본점/지점 건물들 배치
+            const buildingOffsets = [
+                { t: 0.08, offset: 45, height: 45, width: 30, depth: 30, color: 0x0288D1, title: "MG새마을금고 본점" },
+                { t: 0.22, offset: -50, height: 35, width: 25, depth: 25, color: 0x03A9F4, title: "MG금융센터" },
+                { t: 0.38, offset: 52, height: 50, width: 32, depth: 28, color: 0x01579B, title: "새마을금고 IT센터" },
+                { t: 0.52, offset: -55, height: 38, width: 28, depth: 24, color: 0x0288D1, title: "MG새마을금고 서부지점" },
+                { t: 0.70, offset: 48, height: 42, width: 26, depth: 26, color: 0x03A9F4, title: "MG새마을금고 동부지점" },
+                { t: 0.88, offset: -50, height: 40, width: 30, depth: 30, color: 0x01579B, title: "MG새마을금고 연수원" }
+            ];
+
+            buildingOffsets.forEach(b => {
+                const pt = trackCurve.getPointAt(b.t);
+                const tan = trackCurve.getTangentAt(b.t);
+                const norm = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+                const pos = pt.clone().add(norm.multiplyScalar(b.offset));
+
+                // 건물 외벽
+                const bGeom = new THREE.BoxGeometry(b.width, b.height, b.depth);
+                const bMat = new THREE.MeshStandardMaterial({ color: 0xE0E0E0, roughness: 0.3 });
+                const building = new THREE.Mesh(bGeom, bMat);
+                building.position.set(pos.x, b.height / 2, pos.z);
+
+                // 유리창 정면 파사드
+                const glassGeom = new THREE.BoxGeometry(b.width * 0.9, b.height * 0.8, 0.5);
+                const glassMat = new THREE.MeshStandardMaterial({ color: b.color, roughness: 0.1, metalness: 0.8 });
+                const glass = new THREE.Mesh(glassGeom, glassMat);
+                glass.position.set(0, 0, b.depth / 2 + 0.3);
+                building.add(glass);
+
+                // 건물 상단 새마을금고 MG 파란색 간판
+                const signGeom = new THREE.BoxGeometry(b.width * 0.8, 4, 2);
+                const signMat = new THREE.MeshStandardMaterial({ color: 0x00B0FF });
+                const sign = new THREE.Mesh(signGeom, signMat);
+                sign.position.set(0, b.height / 2 + 2, b.depth / 2);
+
+                const logoGeom = new THREE.BoxGeometry(b.width * 0.3, 2.5, 2.4);
+                const logoMat = new THREE.MeshStandardMaterial({ color: 0xFFD700 });
+                const logo = new THREE.Mesh(logoGeom, logoMat);
+                logo.position.set(0, b.height / 2 + 2, b.depth / 2);
+
+                building.add(sign, logo);
+                scene.add(building);
+            });
+
+            // 2. MG 365 자동화 코너 (ATM 부스) 6개 배치
+            for (let i = 0.05; i < 1.0; i += 0.16) {
+                const pt = trackCurve.getPointAt(i);
+                const tan = trackCurve.getTangentAt(i);
+                const norm = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+                const pos = pt.clone().add(norm.multiplyScalar(22));
+
+                const atmGroup = new THREE.Group();
+                const boxGeom = new THREE.BoxGeometry(6, 7, 5);
+                const boxMat = new THREE.MeshStandardMaterial({ color: 0xFFFFFF });
+                const atmBody = new THREE.Mesh(boxGeom, boxMat);
+
+                const frontGeom = new THREE.BoxGeometry(5.2, 5, 0.3);
+                const frontMat = new THREE.MeshStandardMaterial({ color: 0x0288D1 });
+                const front = new THREE.Mesh(frontGeom, frontMat);
+                front.position.set(0, 0, 2.6);
+
+                const topSign = new THREE.Mesh(new THREE.BoxGeometry(5.8, 1.2, 5.2), new THREE.MeshStandardMaterial({ color: 0x00B0FF }));
+                topSign.position.set(0, 4.0, 0);
+
+                atmGroup.add(atmBody, front, topSign);
+                atmGroup.position.set(pos.x, 3.5, pos.z);
+                atmGroup.rotation.y = Math.atan2(tan.x, tan.z);
+                scene.add(atmGroup);
+            }
+
+            // 3. 트랙변 대형 MG 빌보드 전광판 배치
+            for (let i = 0.12; i < 1.0; i += 0.2) {
+                const pt = trackCurve.getPointAt(i);
+                const tan = trackCurve.getTangentAt(i);
+                const norm = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+                const pos = pt.clone().add(norm.multiplyScalar(-24));
+
+                const boardGroup = new THREE.Group();
+                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 16), new THREE.MeshStandardMaterial({ color: 0x757575 }));
+                pole.position.y = 8;
+
+                const board = new THREE.Mesh(new THREE.BoxGeometry(16, 8, 1), new THREE.MeshStandardMaterial({ color: 0x01579B }));
+                board.position.y = 14;
+
+                const innerBoard = new THREE.Mesh(new THREE.BoxGeometry(14, 6, 1.2), new THREE.MeshStandardMaterial({ color: 0xFFD700 }));
+                innerBoard.position.y = 14;
+
+                boardGroup.add(pole, board, innerBoard);
+                boardGroup.position.set(pos.x, 0, pos.z);
+                boardGroup.rotation.y = Math.atan2(tan.x, tan.z) + Math.PI / 2;
+                scene.add(boardGroup);
+            }
+
+            // 4. 가로수 나무 배치
+            for (let i = 0; i < 1.0; i += 0.02) {
+                const pt = trackCurve.getPointAt(i);
+                const tan = trackCurve.getTangentAt(i);
+                const norm = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+
+                [-32, 32].forEach(offset => {
+                    const pos = pt.clone().add(norm.clone().multiplyScalar(offset));
+                    const treeGroup = new THREE.Group();
+                    
+                    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 4), new THREE.MeshStandardMaterial({ color: 0x5D4037 }));
+                    trunk.position.y = 2;
+                    
+                    const leaves = new THREE.Mesh(new THREE.ConeGeometry(3, 8, 8), new THREE.MeshStandardMaterial({ color: 0x2E7D32 }));
+                    leaves.position.y = 7;
+                    
+                    treeGroup.add(trunk, leaves);
+                    treeGroup.position.set(pos.x, 0, pos.z);
+                    scene.add(treeGroup);
+                });
+            }
         }
 
-        function createPokemonModel(p) {
+        function createBirdKartModel(p) {
             const group = new THREE.Group();
 
             const wheelGeom = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 16);
@@ -265,52 +405,99 @@ game_html = """<!DOCTYPE html>
             [[-1.2, 1.0], [1.2, 1.0], [-1.2, -1.0], [1.2, -1.0]].forEach(pos => {
                 const w = new THREE.Mesh(wheelGeom, wheelMat);
                 w.rotation.z = Math.PI / 2;
-                w.position.set(pos[0], 0.2, pos[1]);
+                w.position.set(pos[0], 0.25, pos[1]);
                 group.add(w);
             });
 
-            const bodyMat = new THREE.MeshStandardMaterial({ color: p.color });
-            const body = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.0, 2.6), bodyMat);
-            body.position.y = 0.7;
+            const baseMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+            const base = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.3, 2.8), baseMat);
+            base.position.y = 0.35;
+            group.add(base);
+
+            const birdBlueMat = new THREE.MeshStandardMaterial({ color: p.bodyColor, roughness: 0.3 });
+            const body = new THREE.Mesh(new THREE.SphereGeometry(1.0, 16, 16), birdBlueMat);
+            body.scale.set(1.0, 1.1, 1.0);
+            body.position.set(0, 1.3, 0);
             group.add(body);
 
-            if (p.id === "pikachu") {
-                const earGeom = new THREE.ConeGeometry(0.25, 1.5, 8);
-                const earMat = new THREE.MeshStandardMaterial({ color: 0xFFD700 });
-                const ear1 = new THREE.Mesh(earGeom, earMat); ear1.position.set(-0.6, 2.0, 0.4); ear1.rotation.z = -0.3;
-                const ear2 = new THREE.Mesh(earGeom, earMat); ear2.position.set(0.6, 2.0, 0.4); ear2.rotation.z = 0.3;
+            const beakMat = new THREE.MeshStandardMaterial({ color: 0xFF8C00 });
+            const beak = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.6, 8), beakMat);
+            beak.rotation.x = Math.PI / 2;
+            beak.position.set(0, 1.25, 0.9);
+            group.add(beak);
 
-                const cheekGeom = new THREE.SphereGeometry(0.25, 8, 8);
-                const cheekMat = new THREE.MeshStandardMaterial({ color: 0xFF0000 });
-                const c1 = new THREE.Mesh(cheekGeom, cheekMat); c1.position.set(-1.0, 0.9, 0.9);
-                const c2 = new THREE.Mesh(cheekGeom, cheekMat); c2.position.set(1.0, 0.9, 0.9);
+            const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xFFFFFF });
+            const eyeBlackMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+            
+            [-0.35, 0.35].forEach(x => {
+                const eyeW = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), eyeWhiteMat);
+                eyeW.position.set(x, 1.45, 0.75);
+                const eyeB = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), eyeBlackMat);
+                eyeB.position.set(x * 1.05, 1.45, 0.92);
+                group.add(eyeW, eyeB);
+            });
 
-                const tail = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.5, 0.5), earMat);
-                tail.position.set(0, 1.8, -1.4); tail.rotation.x = -0.4;
+            if (p.id === "leader") {
+                const shirt = new THREE.Mesh(new THREE.CylinderGeometry(1.02, 1.02, 0.7, 16), new THREE.MeshStandardMaterial({ color: 0xFFD700 }));
+                shirt.position.set(0, 0.95, 0);
+                const cheekMat = new THREE.MeshStandardMaterial({ color: 0xFF6B81 });
+                const c1 = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), cheekMat); c1.position.set(-0.65, 1.2, 0.7);
+                const c2 = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), cheekMat); c2.position.set(0.65, 1.2, 0.7);
+                group.add(shirt, c1, c2);
 
-                group.add(ear1, ear2, c1, c2, tail);
-            } else if (p.id === "charmander") {
-                const flame = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.0, 8), new THREE.MeshStandardMaterial({ color: 0xFF1100, emissive: 0xFF4400 }));
-                flame.position.set(0, 1.3, -1.5); flame.rotation.x = -0.8;
-                group.add(flame);
-            } else if (p.id === "squirtle") {
-                const shell = new THREE.Mesh(new THREE.SphereGeometry(1.0, 16, 8), new THREE.MeshStandardMaterial({ color: 0x8D6E63 }));
-                shell.scale.set(1, 0.5, 1.2); shell.position.set(0, 1.3, -0.2);
-                group.add(shell);
-            } else if (p.id === "bulbasaur") {
-                const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 8), new THREE.MeshStandardMaterial({ color: 0x1B5E20 }));
-                bulb.position.set(0, 1.4, -0.3);
-                group.add(bulb);
+            } else if (p.id === "builder") {
+                const helmet = new THREE.Mesh(new THREE.SphereGeometry(1.05, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xFFC107 }));
+                helmet.position.set(0, 1.65, 0);
+                const goggles = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.08, 8, 16), new THREE.MeshStandardMaterial({ color: 0xFFFFFF }));
+                goggles.rotation.x = Math.PI / 2; goggles.position.set(0, 1.55, 0.75);
+                group.add(helmet, goggles);
+
+            } else if (p.id === "scholar") {
+                const hatTop = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 1.4), new THREE.MeshStandardMaterial({ color: 0x212121 }));
+                hatTop.position.set(0, 2.3, 0);
+                const hatBase = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.3, 16), new THREE.MeshStandardMaterial({ color: 0x212121 }));
+                hatBase.position.set(0, 2.1, 0);
+                
+                const glasses = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.04, 8, 16), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+                glasses.position.set(-0.35, 1.45, 0.85);
+                const glasses2 = glasses.clone(); glasses2.position.set(0.35, 1.45, 0.85);
+                group.add(hatTop, hatBase, glasses, glasses2);
+
+            } else if (p.id === "artist") {
+                const beret = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), new THREE.MeshStandardMaterial({ color: 0x37474F }));
+                beret.scale.set(1.2, 0.4, 1.2);
+                beret.position.set(-0.2, 2.1, 0.1);
+                beret.rotation.z = -0.3;
+                group.add(beret);
+
+            } else if (p.id === "farmer") {
+                const strawHat = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 0.7, 0.25, 16), new THREE.MeshStandardMaterial({ color: 0xD7CCC8 }));
+                strawHat.position.set(0, 2.1, 0);
+                group.add(strawHat);
+
+            } else if (p.id === "suit") {
+                const suit = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.8, 16), new THREE.MeshStandardMaterial({ color: 0x1A237E }));
+                suit.position.set(0, 0.9, 0);
+                const glasses = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.25, 0.1), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+                glasses.position.set(0, 1.48, 0.88);
+                group.add(suit, glasses);
+
+            } else if (p.id === "rocket") {
+                const rocket = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.2, 12), new THREE.MeshStandardMaterial({ color: 0xFF5722 }));
+                rocket.rotation.x = Math.PI / 2;
+                rocket.position.set(-0.6, 1.2, -1.0);
+                const rocket2 = rocket.clone(); rocket2.position.set(0.6, 1.2, -1.0);
+                group.add(rocket, rocket2);
             }
 
             return group;
         }
 
-        function spawnPokemonKarts() {
+        function spawnBirdKarts() {
             const trackLen = trackCurve.getLength();
 
-            POKEMONS.forEach((p, i) => {
-                const group = createPokemonModel(p);
+            CHARACTERS.forEach((p, i) => {
+                const group = createBirdKartModel(p);
 
                 group.info = p;
                 group.lap = 1;
@@ -381,12 +568,36 @@ game_html = """<!DOCTYPE html>
             }, 1000);
         }
 
+        function pauseGame() {
+            if (gameState === 'RACING') {
+                gameState = 'PAUSED';
+                document.getElementById("pauseModal").style.display = "block";
+            }
+        }
+
+        function resumeGame() {
+            if (gameState === 'PAUSED') {
+                gameState = 'RACING';
+                document.getElementById("pauseModal").style.display = "none";
+            }
+        }
+
+        function restartGame() {
+            location.reload();
+        }
+
         function handleKey(e, isDown) {
             if (e.code === "ArrowUp") keys.forward = isDown;
             if (e.code === "ArrowDown") keys.backward = isDown;
             if (e.code === "ArrowLeft") keys.left = isDown;
             if (e.code === "ArrowRight") keys.right = isDown;
             if (e.code === "Space") keys.boost = isDown;
+
+            if (isDown && e.code === "Escape") {
+                if (gameState === 'RACING') pauseGame();
+                else if (gameState === 'PAUSED') resumeGame();
+            }
+
             if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
         }
 
@@ -418,10 +629,12 @@ game_html = """<!DOCTYPE html>
             const maxOffset = (trackWidth / 2) - 1.5;
 
             if (Math.abs(offset) > maxOffset) {
-                const clampedOffset = Math.sign(offset) * maxOffset;
+                const clampedOffset = Math.sign(offset) * (maxOffset - 0.8);
                 kart.position.copy(pt).add(norm.multiplyScalar(clampedOffset));
                 kart.position.y = 0.25;
-                kart.speed = 0;
+
+                kart.speed = Math.max(0.1, kart.speed * 0.3);
+                kart.rotation.y += (offset > 0 ? -0.08 : 0.08);
             }
         }
 
@@ -522,7 +735,7 @@ game_html = """<!DOCTYPE html>
             if (finishedKart.info.isPlayer) {
                 showWinnerModal(`🎉 ${finishedKart.info.name} ${finishedKart.rank}위 도착!`, `3바퀴 완주 성공!`);
             } else if (rankCounter === 1) {
-                showWinnerModal(`🏆 ${finishedKart.info.name} 우승!`, `상대 포켓몬이 먼저 완주했습니다.`);
+                showWinnerModal(`🏆 ${finishedKart.info.name} 우승!`, `상대 라이벌이 먼저 완주했습니다.`);
             }
         }
 
