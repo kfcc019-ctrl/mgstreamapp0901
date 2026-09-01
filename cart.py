@@ -1,10 +1,10 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="3D 새망이 카트라이더", layout="wide")
+st.set_page_config(page_title="3D 새망이 카트라이더 PRO", layout="wide")
 
-st.title("🐤 3D 새마을금고 새망이 카트라이더: 리얼 서킷")
-st.write("난이도를 선택한 후 **레이스 시작**을 누르세요! (방향키: 조향/가속, **Shift**: 브레이크/감속, **Space**: 부스터, **ESC**: 일시정지)")
+st.title("🐤 3D 새마을금고 새망이 카트라이더: PRO 챔피언십")
+st.write("난이도를 선택한 후 **레이스 시작**을 누르세요! (방향키: 조향/가속, **Shift**: 드리프트/브레이크, **Space**: 부스터, **ESC**: 일시정지)")
 
 game_html = """<!DOCTYPE html>
 <html>
@@ -20,9 +20,9 @@ game_html = """<!DOCTYPE html>
         }
 
         #startScreen {
-            pointer-events: auto; background: rgba(15, 15, 25, 0.85); padding: 25px 45px;
+            pointer-events: auto; background: rgba(15, 15, 25, 0.88); padding: 30px 50px;
             border-radius: 20px; text-align: center; border: 3px solid #00B0FF;
-            box-shadow: 0 0 25px rgba(0,176,255,0.4); backdrop-filter: blur(4px);
+            box-shadow: 0 0 30px rgba(0,176,255,0.5); backdrop-filter: blur(8px);
         }
 
         .diff-btn {
@@ -39,21 +39,37 @@ game_html = """<!DOCTYPE html>
         #startBtn:hover { transform: scale(1.05); background: #FFF066; }
         
         #countdown {
-            font-size: 120px; font-weight: 900; text-shadow: 0 0 30px rgba(0,0,0,0.9);
+            font-size: 130px; font-weight: 900; text-shadow: 0 0 35px rgba(0,0,0,0.9);
             color: #00E5FF; display: none;
         }
         
         #hud {
             position: absolute; top: 20px; left: 20px; text-align: left;
-            font-size: 18px; font-weight: bold; background: rgba(0,0,0,0.8);
-            padding: 15px 25px; border-radius: 12px; border: 2px solid #00B0FF; display: none;
-            pointer-events: auto;
+            font-size: 18px; font-weight: bold; background: rgba(0,0,0,0.82);
+            padding: 18px 25px; border-radius: 15px; border: 2px solid #00B0FF; display: none;
+            pointer-events: auto; box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+        }
+
+        #minimapCanvas {
+            position: absolute; top: 20px; right: 20px; width: 150px; height: 150px;
+            border: 3px solid #00B0FF; border-radius: 50%; background: rgba(0,0,0,0.75);
+            display: none; box-shadow: 0 0 15px rgba(0,176,255,0.4);
         }
 
         .hud-btn {
             margin-top: 10px; padding: 6px 14px; font-size: 14px; font-weight: bold;
             background: #FF9800; color: white; border: none; border-radius: 6px; cursor: pointer;
         }
+
+        #speedometer {
+            font-size: 32px; color: #FFD700; font-family: monospace; margin-top: 5px;
+        }
+
+        .gauge-container {
+            width: 180px; height: 12px; background: #333; border-radius: 6px; overflow: hidden;
+            border: 1px solid #777; margin-top: 6px;
+        }
+        .gauge-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #00E5FF, #FFD700); transition: 0.1s; }
         
         .modal-popup {
             position: absolute; display: none; pointer-events: auto;
@@ -71,10 +87,11 @@ game_html = """<!DOCTYPE html>
 </head>
 <body>
     <div id="gameCanvas"></div>
+    <canvas id="minimapCanvas" width="150" height="150"></canvas>
     
     <div id="ui-overlay">
         <div id="startScreen">
-            <h2 style="color:#00B0FF; margin-top:0;">🐤 새망이 레이스 난이도</h2>
+            <h2 style="color:#00B0FF; margin-top:0;">🐤 새망이 PRO 레이스 난이도</h2>
             <div style="margin-bottom: 15px;">
                 <button class="diff-btn" onclick="selectDiff('EASY', this)">하 (쉬움)</button>
                 <button class="diff-btn active" onclick="selectDiff('MEDIUM', this)">중 (보통)</button>
@@ -88,8 +105,10 @@ game_html = """<!DOCTYPE html>
         <div id="hud">
             <div>🏁 순위: <span id="rankText" style="color:#FFD700;">1</span> / 7</div>
             <div>🔄 바퀴: <span id="lapText" style="color:#00E5FF;">1</span> / 3</div>
-            <div>🛑 브레이크: <span style="color:#FFD700;">Shift</span></div>
-            <div>⚡ 부스터: <span id="boostText" style="color:#00FF00;">사용 가능 (Space)</span></div>
+            <div id="speedometer">0 <span style="font-size:16px;">km/h</span></div>
+            <div style="font-size:13px; margin-top:5px; color:#AAA;">부스터 게이지 (Shift 드리프트)</div>
+            <div class="gauge-container"><div id="boostGauge" class="gauge-bar"></div></div>
+            <div style="margin-top:6px;">⚡ 부스터: <span id="boostText" style="color:#00FF00;">준비중</span></div>
             <button class="hud-btn" onclick="pauseGame()">⏸️ 일시정지 (ESC)</button>
         </div>
 
@@ -114,6 +133,72 @@ game_html = """<!DOCTYPE html>
         let selectedDifficulty = 'MEDIUM';
         let rankCounter = 0;
 
+        // --- WEB AUDIO API 사운드 시스템 ---
+        let audioCtx = null;
+        let engineOsc = null, engineGain = null;
+
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // 엔진 주행음 오실레이터
+            engineOsc = audioCtx.createOscillator();
+            engineGain = audioCtx.createGain();
+            engineOsc.type = 'sawtooth';
+            engineOsc.frequency.setValueAtTime(60, audioCtx.currentTime);
+            engineGain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+            engineOsc.connect(engineGain);
+            engineGain.connect(audioCtx.destination);
+            engineOsc.start();
+        }
+
+        function playSoundBeep(freq, duration) {
+            if (!audioCtx) return;
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playCollisionSFX() {
+            if (!audioCtx) return;
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.15);
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.15);
+        }
+
+        function playBoostSFX() {
+            if (!audioCtx) return;
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.4);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.4);
+        }
+
+        function updateEngineAudio(speedRatio) {
+            if (!engineOsc || !audioCtx) return;
+            let freq = 50 + speedRatio * 180;
+            engineOsc.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.05);
+        }
+
+        // --- 캐릭터 데이터 ---
         const CHARACTERS = [
             { id: "leader", name: "대장 새망이👑", bodyColor: 0x29B6F6, isPlayer: true },
             { id: "builder", name: "건설 새망이🔨", bodyColor: 0x29B6F6, isPlayer: false },
@@ -131,6 +216,13 @@ game_html = """<!DOCTYPE html>
         let checkpoints = [];
         const trackWidth = 28;
 
+        // 부스터 충전 게이지
+        let boostGaugeAmount = 0;
+        let availableBoostCount = 0;
+
+        // 부스터 파티클 및 스키드 마크
+        let boostParticles;
+
         const keys = { forward: false, backward: false, left: false, right: false, boost: false, brake: false };
 
         init();
@@ -139,22 +231,26 @@ game_html = """<!DOCTYPE html>
         function init() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x81D4FA);
+            scene.fog = new THREE.FogExp2(0x81D4FA, 0.0008); // 공간감 안개
 
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 2500);
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true; // 그림자 지원
             document.getElementById("gameCanvas").appendChild(renderer.domElement);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
             scene.add(ambientLight);
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.95);
             dirLight.position.set(200, 400, 100);
+            dirLight.castShadow = true;
             scene.add(dirLight);
 
             createCleanTrackAndWalls();
             createStartFinishLine();
             createEnvironment();
             spawnBirdKarts();
+            createBoostParticles();
 
             updateCamera();
 
@@ -187,7 +283,7 @@ game_html = """<!DOCTYPE html>
 
             trackCurve = new THREE.CatmullRomCurve3(controlPoints, true);
             const divisions = 400;
-            const wallHeight = 2.0;
+            const wallHeight = 2.2;
 
             const roadGeom = new THREE.BufferGeometry();
             const positions = [];
@@ -223,7 +319,9 @@ game_html = """<!DOCTYPE html>
             roadGeom.setIndex(indices);
             roadGeom.computeVertexNormals();
             const roadMat = new THREE.MeshStandardMaterial({ color: 0x2A2A2A, side: THREE.DoubleSide, roughness: 0.8 });
-            scene.add(new THREE.Mesh(roadGeom, roadMat));
+            const roadMesh = new THREE.Mesh(roadGeom, roadMat);
+            roadMesh.receiveShadow = true;
+            scene.add(roadMesh);
 
             const wallMat = new THREE.MeshStandardMaterial({ color: 0x00B0FF, side: THREE.DoubleSide });
 
@@ -276,6 +374,7 @@ game_html = """<!DOCTYPE html>
             );
             grass.rotation.x = -Math.PI / 2;
             grass.position.y = 0;
+            grass.receiveShadow = true;
             scene.add(grass);
 
             const buildingOffsets = [
@@ -295,6 +394,7 @@ game_html = """<!DOCTYPE html>
 
                 const building = new THREE.Mesh(new THREE.BoxGeometry(b.width, b.height, b.depth), new THREE.MeshStandardMaterial({ color: 0xE0E0E0, roughness: 0.3 }));
                 building.position.set(pos.x, b.height / 2, pos.z);
+                building.castShadow = true;
 
                 const glass = new THREE.Mesh(new THREE.BoxGeometry(b.width * 0.9, b.height * 0.8, 0.5), new THREE.MeshStandardMaterial({ color: b.color, roughness: 0.1, metalness: 0.8 }));
                 glass.position.set(0, 0, b.depth / 2 + 0.3);
@@ -306,24 +406,6 @@ game_html = """<!DOCTYPE html>
                 building.add(sign);
                 scene.add(building);
             });
-
-            for (let i = 0; i < 1.0; i += 0.02) {
-                const pt = trackCurve.getPointAt(i);
-                const tan = trackCurve.getTangentAt(i);
-                const norm = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-
-                [-32, 32].forEach(offset => {
-                    const pos = pt.clone().add(norm.clone().multiplyScalar(offset));
-                    const treeGroup = new THREE.Group();
-                    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 4), new THREE.MeshStandardMaterial({ color: 0x5D4037 }));
-                    trunk.position.y = 2;
-                    const leaves = new THREE.Mesh(new THREE.ConeGeometry(3, 8, 8), new THREE.MeshStandardMaterial({ color: 0x2E7D32 }));
-                    leaves.position.y = 7;
-                    treeGroup.add(trunk, leaves);
-                    treeGroup.position.set(pos.x, 0, pos.z);
-                    scene.add(treeGroup);
-                });
-            }
         }
 
         function createBirdKartModel(p) {
@@ -335,6 +417,7 @@ game_html = """<!DOCTYPE html>
                 const w = new THREE.Mesh(wheelGeom, wheelMat);
                 w.rotation.z = Math.PI / 2;
                 w.position.set(pos[0], 0.25, pos[1]);
+                w.castShadow = true;
                 group.add(w);
             });
 
@@ -347,6 +430,7 @@ game_html = """<!DOCTYPE html>
             const body = new THREE.Mesh(new THREE.SphereGeometry(1.0, 16, 16), birdBlueMat);
             body.scale.set(1.0, 1.1, 1.0);
             body.position.set(0, 1.3, 0);
+            body.castShadow = true;
             group.add(body);
 
             const beakMat = new THREE.MeshStandardMaterial({ color: 0xFF8C00 });
@@ -380,55 +464,66 @@ game_html = """<!DOCTYPE html>
                 helmet.position.set(0, 1.6, 0);
                 const vest = new THREE.Mesh(new THREE.CylinderGeometry(1.02, 1.02, 0.6, 16), new THREE.MeshStandardMaterial({ color: 0xFF5722 }));
                 vest.position.set(0, 0.9, 0);
-                const hammer = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 0.4), new THREE.MeshStandardMaterial({ color: 0x795548 }));
-                hammer.position.set(1.1, 1.2, 0);
-                group.add(helmet, vest, hammer);
+                group.add(helmet, vest);
 
             } else if (p.id === "scholar") {
                 const hatTop = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 1.5), new THREE.MeshStandardMaterial({ color: 0x212121 }));
                 hatTop.position.set(0, 2.35, 0);
                 const hatBase = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.3, 16), new THREE.MeshStandardMaterial({ color: 0x212121 }));
                 hatBase.position.set(0, 2.15, 0);
-                const glasses = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.05, 8, 16), new THREE.MeshStandardMaterial({ color: 0x111111 }));
-                glasses.position.set(-0.35, 1.45, 0.85);
-                const glasses2 = glasses.clone(); glasses2.position.set(0.35, 1.45, 0.85);
-                const tie = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 0.1), new THREE.MeshStandardMaterial({ color: 0xD32F2F }));
-                tie.position.set(0, 0.8, 0.95);
-                group.add(hatTop, hatBase, glasses, glasses2, tie);
+                group.add(hatTop, hatBase);
 
             } else if (p.id === "artist") {
                 const beret = new THREE.Mesh(new THREE.SphereGeometry(0.85, 16, 16), new THREE.MeshStandardMaterial({ color: 0xD32F2F }));
                 beret.scale.set(1.2, 0.4, 1.2); beret.position.set(-0.2, 2.15, 0.1); beret.rotation.z = -0.3;
-                const palette = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.1), new THREE.MeshStandardMaterial({ color: 0x8D6E63 }));
-                palette.position.set(-1.1, 1.2, 0.5); palette.rotation.y = 0.5;
-                group.add(beret, palette);
+                group.add(beret);
 
             } else if (p.id === "farmer") {
                 const strawHat = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 0.7, 0.2, 16), new THREE.MeshStandardMaterial({ color: 0xD7CCC8 }));
                 strawHat.position.set(0, 2.15, 0);
-                const overalls = new THREE.Mesh(new THREE.CylinderGeometry(1.02, 1.02, 0.7, 16), new THREE.MeshStandardMaterial({ color: 0x33691E }));
-                overalls.position.set(0, 0.9, 0);
-                group.add(strawHat, overalls);
+                group.add(strawHat);
 
             } else if (p.id === "suit") {
                 const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.9, 0.8, 16), new THREE.MeshStandardMaterial({ color: 0x1A237E }));
                 hat.position.set(0, 2.2, 0);
-                const suit = new THREE.Mesh(new THREE.CylinderGeometry(1.02, 1.02, 0.7, 16), new THREE.MeshStandardMaterial({ color: 0x1A237E }));
-                suit.position.set(0, 0.9, 0);
-                const briefcase = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.7, 0.9), new THREE.MeshStandardMaterial({ color: 0x3E2723 }));
-                briefcase.position.set(1.1, 0.8, -0.2);
-                group.add(hat, suit, briefcase);
+                group.add(hat);
 
             } else if (p.id === "rocket") {
                 const helmet = new THREE.Mesh(new THREE.SphereGeometry(1.15, 16, 16), new THREE.MeshStandardMaterial({ color: 0xE0E0E0, transparent: true, opacity: 0.8 }));
                 helmet.position.set(0, 1.45, 0);
-                const rocket = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.4, 12), new THREE.MeshStandardMaterial({ color: 0xFF5722 }));
-                rocket.rotation.x = Math.PI / 2; rocket.position.set(-0.6, 1.3, -1.1);
-                const rocket2 = rocket.clone(); rocket2.position.set(0.6, 1.3, -1.1);
-                group.add(helmet, rocket, rocket2);
+                group.add(helmet);
             }
 
             return group;
+        }
+
+        function createBoostParticles() {
+            const pCount = 60;
+            const geom = new THREE.BufferGeometry();
+            const positions = new Float32Array(pCount * 3);
+            for(let i=0; i<pCount*3; i++) positions[i] = 0;
+            geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const mat = new THREE.PointsMaterial({ color: 0x00E5FF, size: 0.6, transparent: true, opacity: 0.8 });
+            boostParticles = new THREE.Points(geom, mat);
+            boostParticles.visible = false;
+            scene.add(boostParticles);
+        }
+
+        function updateBoostParticles(kart) {
+            if (!boostParticles) return;
+            if (kart.boosterActive > 0) {
+                boostParticles.visible = true;
+                const pos = boostParticles.geometry.attributes.position.array;
+                const backVec = new THREE.Vector3(0, 1, -1.8).applyMatrix4(kart.matrixWorld);
+                for(let i=0; i<60; i++) {
+                    pos[i*3] = backVec.x + (Math.random()-0.5)*0.8;
+                    pos[i*3+1] = backVec.y + (Math.random()-0.5)*0.8;
+                    pos[i*3+2] = backVec.z + (Math.random()-0.5)*0.8;
+                }
+                boostParticles.geometry.attributes.position.needsUpdate = true;
+            } else {
+                boostParticles.visible = false;
+            }
         }
 
         function spawnBirdKarts() {
@@ -479,6 +574,7 @@ game_html = """<!DOCTYPE html>
         }
 
         function startCountdown() {
+            initAudio(); // 웹 오디오 초기화
             document.getElementById("startScreen").style.display = "none";
             const cdEl = document.getElementById("countdown");
             cdEl.style.display = "block";
@@ -493,15 +589,19 @@ game_html = """<!DOCTYPE html>
 
             let count = 3;
             cdEl.innerText = count;
+            playSoundBeep(440, 0.2);
 
             const timer = setInterval(() => {
                 count--;
                 if (count > 0) {
                     cdEl.innerText = count;
+                    playSoundBeep(440, 0.2);
                 } else if (count === 0) {
                     cdEl.innerText = "GO!!";
+                    playSoundBeep(880, 0.5);
                     gameState = 'RACING';
                     document.getElementById("hud").style.display = "block";
+                    document.getElementById("minimapCanvas").style.display = "block";
                 } else {
                     clearInterval(timer);
                     cdEl.style.display = "none";
@@ -527,14 +627,13 @@ game_html = """<!DOCTYPE html>
             location.reload();
         }
 
-        // [입력 키 설정: Shift 키를 브레이크로 바인딩]
         function handleKey(e, isDown) {
             if (e.code === "ArrowUp") keys.forward = isDown;
             if (e.code === "ArrowDown") keys.backward = isDown;
             if (e.code === "ArrowLeft") keys.left = isDown;
             if (e.code === "ArrowRight") keys.right = isDown;
             if (e.code === "Space") keys.boost = isDown;
-            if (e.code === "ShiftLeft" || e.code === "ShiftRight") keys.brake = isDown; // Shift 키 브레이크
+            if (e.code === "ShiftLeft" || e.code === "ShiftRight") keys.brake = isDown;
 
             if (isDown && e.code === "Escape") {
                 if (gameState === 'RACING') pauseGame();
@@ -559,7 +658,6 @@ game_html = """<!DOCTYPE html>
             kart.progressT = bestT;
         }
 
-        // 속도 비례 현실적 벽 충돌 물리
         function checkWallCollision(kart) {
             syncProgressT(kart);
 
@@ -577,7 +675,7 @@ game_html = """<!DOCTYPE html>
                 const isHighSpeed = currentSpeed > 0.85;
 
                 if (isHighSpeed) {
-                    // 고속 충돌: 물리 반발력으로 크게 튕겨남
+                    playCollisionSFX();
                     const bounceDistance = Math.min(currentSpeed * 2.8, 4.2);
                     const clampedOffset = Math.sign(offset) * (maxOffset - bounceDistance);
                     kart.position.copy(pt).add(norm.multiplyScalar(clampedOffset));
@@ -585,7 +683,6 @@ game_html = """<!DOCTYPE html>
                     kart.speed = Math.max(0.08, kart.speed * 0.15);
                     kart.rotation.y += (offset > 0 ? -0.4 : 0.4);
                 } else {
-                    // 저속 충돌: 튕김 없이 부드러운 감속
                     const clampedOffset = Math.sign(offset) * (maxOffset - 0.2);
                     kart.position.copy(pt).add(norm.multiplyScalar(clampedOffset));
 
@@ -608,19 +705,35 @@ game_html = """<!DOCTYPE html>
                     let dist = k1.position.distanceTo(k2.position);
 
                     if (dist < collisionRadius && dist > 0.01) {
+                        playCollisionSFX();
                         let overlap = collisionRadius - dist;
 
-                        let pushDir = new THREE.Vector3().subVectors(k1.position, k2.position).normalize();
-                        pushDir.y = 0;
+                        let dir2to1 = new THREE.Vector3().subVectors(k1.position, k2.position).normalize();
+                        dir2to1.y = 0;
 
-                        k1.position.add(pushDir.clone().multiplyScalar(overlap * 0.6));
-                        k2.position.sub(pushDir.clone().multiplyScalar(overlap * 0.6));
+                        let fwd1 = new THREE.Vector3(0, 0, 1).applyQuaternion(k1.quaternion).normalize();
+                        let fwd2 = new THREE.Vector3(0, 0, 1).applyQuaternion(k2.quaternion).normalize();
 
-                        k1.speed *= 0.55;
-                        k2.speed *= 0.55;
+                        k1.position.add(dir2to1.clone().multiplyScalar(overlap * 0.6));
+                        k2.position.sub(dir2to1.clone().multiplyScalar(overlap * 0.6));
 
-                        k1.rotation.y += (Math.random() - 0.5) * 0.25;
-                        k2.rotation.y += (Math.random() - 0.5) * 0.25;
+                        let dot1 = dir2to1.dot(fwd1);
+                        let dot2 = dir2to1.dot(fwd2);
+
+                        if (dot1 > 0.25 && dot2 > 0.25) {
+                            let transferredSpeed = Math.max(0.35, Math.abs(k2.speed) * 0.75);
+                            k1.speed = Math.min(k1.maxSpeed * 1.5, k1.speed + transferredSpeed);
+                            k2.speed *= 0.25;
+                        } else if (dot1 < -0.25 && dot2 < -0.25) {
+                            let transferredSpeed = Math.max(0.35, Math.abs(k1.speed) * 0.75);
+                            k2.speed = Math.min(k2.maxSpeed * 1.5, k2.speed + transferredSpeed);
+                            k1.speed *= 0.25;
+                        } else {
+                            k1.speed *= 0.55;
+                            k2.speed *= 0.55;
+                            k1.rotation.y += (Math.random() - 0.5) * 0.25;
+                            k2.rotation.y += (Math.random() - 0.5) * 0.25;
+                        }
                     }
                 }
             }
@@ -645,8 +758,16 @@ game_html = """<!DOCTYPE html>
                     if (keys.left) { kart.rotation.y += 0.028; isTurning = true; }
                     if (keys.right) { kart.rotation.y -= 0.028; isTurning = true; }
 
-                    // [Shift 키 브레이크 물리]
-                    if (keys.brake) {
+                    // [드리프트 및 부스터 게이지 충전 로직]
+                    if (keys.brake && isTurning && Math.abs(kart.speed) > 0.6) {
+                        boostGaugeAmount = Math.min(100, boostGaugeAmount + 0.8);
+                        if (boostGaugeAmount >= 100 && availableBoostCount === 0) {
+                            availableBoostCount = 1;
+                            boostGaugeAmount = 0;
+                        }
+                    }
+
+                    if (keys.brake && !isTurning) {
                         if (kart.speed > 0) kart.speed = Math.max(0, kart.speed - 0.07);
                         else if (kart.speed < 0) kart.speed = Math.min(0, kart.speed + 0.07);
                     }
@@ -659,23 +780,31 @@ game_html = """<!DOCTYPE html>
                         kart.speed *= 0.95;
                     }
 
-                    // [현실적 코너링 마찰 감속] 고속으로 코너 조향 시 물리적 속도 감소
                     if (isTurning && Math.abs(kart.speed) > 0.4) {
                         let corneringDrag = 0.018 * (Math.abs(kart.speed) / currentMaxSpeed);
                         kart.speed *= (1.0 - corneringDrag);
                     }
 
-                    if (keys.boost && kart.boosterCooldown === 0 && kart.boosterActive === 0) {
+                    // 부스터 활성화 (Space바)
+                    if (keys.boost && availableBoostCount > 0 && kart.boosterActive === 0) {
+                        availableBoostCount = 0;
                         kart.boosterActive = 120;
-                        kart.boosterCooldown = 600;
                         kart.speed = currentMaxSpeed;
+                        playBoostSFX();
                     }
 
                     kart.translateZ(kart.speed);
                     checkWallCollision(kart);
 
+                    // HUD 및 사운드 업데이트
+                    let displayKm = Math.round(Math.abs(kart.speed) * 110);
+                    document.getElementById("speedometer").innerHTML = `${displayKm} <span style="font-size:16px;">km/h</span>`;
+                    document.getElementById("boostGauge").style.width = `${boostGaugeAmount}%`;
+                    updateEngineAudio(Math.abs(kart.speed) / kart.maxSpeed);
+                    updateBoostParticles(kart);
+
                 } else {
-                    // AI 조향 및 실수/코너링 감속 적용
+                    // AI 조향
                     kart.aiWobbleTimer++;
                     if (kart.aiWobbleTimer > 60 + Math.random() * 90) {
                         let errorMagnitude = selectedDifficulty === 'EASY' ? 12 : (selectedDifficulty === 'MEDIUM' ? 7.5 : 3.5);
@@ -709,7 +838,6 @@ game_html = """<!DOCTYPE html>
                     let actualTurn = Math.max(-maxTurnRate, Math.min(maxTurnRate, angleDiff * 0.1));
                     kart.rotation.y += actualTurn;
 
-                    // AI도 코너 조향 시 현실적인 가로 방향 감속 발생
                     if (Math.abs(actualTurn) > 0.015 && Math.abs(kart.speed) > 0.5) {
                         kart.speed *= 0.985;
                     }
@@ -742,17 +870,48 @@ game_html = """<!DOCTYPE html>
 
             const bText = document.getElementById("boostText");
             if (playerKart.boosterActive > 0) {
-                bText.innerText = `🔥 부스터 가속 중! (${(playerKart.boosterActive / 60).toFixed(1)}s)`;
+                bText.innerText = `🔥 부스터 가속 중!`;
                 bText.style.color = "#FF4500";
-            } else if (playerKart.boosterCooldown > 0) {
-                bText.innerText = `⏳ 쿨다운 중... (${(playerKart.boosterCooldown / 60).toFixed(1)}s)`;
-                bText.style.color = "#AAAAAA";
-            } else {
+            } else if (availableBoostCount > 0) {
                 bText.innerText = "사용 가능 (Space)";
                 bText.style.color = "#00FF00";
+            } else {
+                bText.innerText = "드리프트 충전 필요";
+                bText.style.color = "#AAAAAA";
             }
 
             updateRankings();
+            drawMinimap();
+        }
+
+        // 실시간 2D 미니맵 렌더링
+        function drawMinimap() {
+            const mCanvas = document.getElementById("minimapCanvas");
+            const mCtx = mCanvas.getContext("2d");
+            mCtx.clearRect(0, 0, 150, 150);
+
+            // 트랙 라인
+            mCtx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+            mCtx.lineWidth = 6;
+            mCtx.beginPath();
+            for(let i=0; i<=100; i++) {
+                let pt = trackCurve.getPointAt(i / 100);
+                let mx = 75 + pt.x * 0.14;
+                let my = 75 + pt.z * 0.14;
+                if (i === 0) mCtx.moveTo(mx, my);
+                else mCtx.lineTo(mx, my);
+            }
+            mCtx.stroke();
+
+            // 카트 위치 점 렌더링
+            karts.forEach(k => {
+                let mx = 75 + k.position.x * 0.14;
+                let my = 75 + k.position.z * 0.14;
+                mCtx.fillStyle = k.info.isPlayer ? "#FFD700" : "#00E5FF";
+                mCtx.beginPath();
+                mCtx.arc(mx, my, k.info.isPlayer ? 5 : 3.5, 0, Math.PI * 2);
+                mCtx.fill();
+            });
         }
 
         function updateRankings() {
@@ -779,12 +938,18 @@ game_html = """<!DOCTYPE html>
             document.getElementById("winnerModal").style.display = "block";
         }
 
+        // 가속 시 Dynamic FOV 적용
         function updateCamera() {
             if (!playerKart) return;
             const offset = new THREE.Vector3(0, 6, -15);
             const cameraPos = offset.applyMatrix4(playerKart.matrixWorld);
             camera.position.lerp(cameraPos, 0.2);
             camera.lookAt(playerKart.position.x, playerKart.position.y + 1.8, playerKart.position.z);
+
+            // 부스터 시 카메라 FOV 확장 (속도감 연출)
+            let targetFOV = playerKart.boosterActive > 0 ? 85 : 70;
+            camera.fov = THREE.MathUtils.lerp(camera.fov, targetFOV, 0.1);
+            camera.updateProjectionMatrix();
         }
 
         function onWindowResize() {
