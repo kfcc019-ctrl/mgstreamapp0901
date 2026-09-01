@@ -3,7 +3,7 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="3D 새망이 카트라이더", layout="wide")
 
-st.title("🐤 3D 새마을금고 새망이 카트라이더")
+st.title("🐤 3D 새마을금고 새망이 카트라이더: 리얼 서킷")
 st.write("난이도를 선택한 후 **레이스 시작**을 누르세요! (방향키: 조향/가속, **Space바**: 부스터, **ESC**: 일시정지)")
 
 game_html = """<!DOCTYPE html>
@@ -116,7 +116,7 @@ game_html = """<!DOCTYPE html>
         let rankCounter = 0;
 
         const CHARACTERS = [
-            { id: "leader", name: "대장 새망이⚡", bodyColor: 0x29B6F6, isPlayer: true },
+            { id: "leader", name: "대장 새망이👑", bodyColor: 0x29B6F6, isPlayer: true },
             { id: "builder", name: "건설 새망이🔨", bodyColor: 0x29B6F6, isPlayer: false },
             { id: "scholar", name: "학자 새망이🎓", bodyColor: 0x29B6F6, isPlayer: false },
             { id: "artist", name: "화가 새망이🎨", bodyColor: 0x29B6F6, isPlayer: false },
@@ -258,7 +258,6 @@ game_html = """<!DOCTYPE html>
             const p1 = new THREE.Mesh(poleGeom, poleMat); p1.position.set(-15, 7, 0);
             const p2 = new THREE.Mesh(poleGeom, poleMat); p2.position.set(15, 7, 0);
             
-            // 새마을금고 스타트 아치 간판
             const top = new THREE.Mesh(new THREE.BoxGeometry(32, 3, 2), new THREE.MeshStandardMaterial({ color: 0x0288D1 }));
             top.position.set(0, 13, 0);
 
@@ -271,7 +270,6 @@ game_html = """<!DOCTYPE html>
             scene.add(archGroup);
         }
 
-        // 새마을금고 건물, ATM, 대형 빌보드 전광판 및 도심 가로수 배경 구축
         function createEnvironment() {
             const grass = new THREE.Mesh(
                 new THREE.PlaneGeometry(3000, 3000),
@@ -281,14 +279,13 @@ game_html = """<!DOCTYPE html>
             grass.position.y = 0;
             scene.add(grass);
 
-            // 1. 새마을금고 본점/지점 건물들 배치
             const buildingOffsets = [
-                { t: 0.08, offset: 45, height: 45, width: 30, depth: 30, color: 0x0288D1, title: "MG새마을금고 본점" },
-                { t: 0.22, offset: -50, height: 35, width: 25, depth: 25, color: 0x03A9F4, title: "MG금융센터" },
-                { t: 0.38, offset: 52, height: 50, width: 32, depth: 28, color: 0x01579B, title: "새마을금고 IT센터" },
-                { t: 0.52, offset: -55, height: 38, width: 28, depth: 24, color: 0x0288D1, title: "MG새마을금고 서부지점" },
-                { t: 0.70, offset: 48, height: 42, width: 26, depth: 26, color: 0x03A9F4, title: "MG새마을금고 동부지점" },
-                { t: 0.88, offset: -50, height: 40, width: 30, depth: 30, color: 0x01579B, title: "MG새마을금고 연수원" }
+                { t: 0.08, offset: 45, height: 45, width: 30, depth: 30, color: 0x0288D1 },
+                { t: 0.22, offset: -50, height: 35, width: 25, depth: 25, color: 0x03A9F4 },
+                { t: 0.38, offset: 52, height: 50, width: 32, depth: 28, color: 0x01579B },
+                { t: 0.52, offset: -55, height: 38, width: 28, depth: 24, color: 0x0288D1 },
+                { t: 0.70, offset: 48, height: 42, width: 26, depth: 26, color: 0x03A9F4 },
+                { t: 0.88, offset: -50, height: 40, width: 30, depth: 30, color: 0x01579B }
             ];
 
             buildingOffsets.forEach(b => {
@@ -297,84 +294,20 @@ game_html = """<!DOCTYPE html>
                 const norm = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
                 const pos = pt.clone().add(norm.multiplyScalar(b.offset));
 
-                // 건물 외벽
-                const bGeom = new THREE.BoxGeometry(b.width, b.height, b.depth);
-                const bMat = new THREE.MeshStandardMaterial({ color: 0xE0E0E0, roughness: 0.3 });
-                const building = new THREE.Mesh(bGeom, bMat);
+                const building = new THREE.Mesh(new THREE.BoxGeometry(b.width, b.height, b.depth), new THREE.MeshStandardMaterial({ color: 0xE0E0E0, roughness: 0.3 }));
                 building.position.set(pos.x, b.height / 2, pos.z);
 
-                // 유리창 정면 파사드
-                const glassGeom = new THREE.BoxGeometry(b.width * 0.9, b.height * 0.8, 0.5);
-                const glassMat = new THREE.MeshStandardMaterial({ color: b.color, roughness: 0.1, metalness: 0.8 });
-                const glass = new THREE.Mesh(glassGeom, glassMat);
+                const glass = new THREE.Mesh(new THREE.BoxGeometry(b.width * 0.9, b.height * 0.8, 0.5), new THREE.MeshStandardMaterial({ color: b.color, roughness: 0.1, metalness: 0.8 }));
                 glass.position.set(0, 0, b.depth / 2 + 0.3);
                 building.add(glass);
 
-                // 건물 상단 새마을금고 MG 파란색 간판
-                const signGeom = new THREE.BoxGeometry(b.width * 0.8, 4, 2);
-                const signMat = new THREE.MeshStandardMaterial({ color: 0x00B0FF });
-                const sign = new THREE.Mesh(signGeom, signMat);
+                const sign = new THREE.Mesh(new THREE.BoxGeometry(b.width * 0.8, 4, 2), new THREE.MeshStandardMaterial({ color: 0x00B0FF }));
                 sign.position.set(0, b.height / 2 + 2, b.depth / 2);
 
-                const logoGeom = new THREE.BoxGeometry(b.width * 0.3, 2.5, 2.4);
-                const logoMat = new THREE.MeshStandardMaterial({ color: 0xFFD700 });
-                const logo = new THREE.Mesh(logoGeom, logoMat);
-                logo.position.set(0, b.height / 2 + 2, b.depth / 2);
-
-                building.add(sign, logo);
+                building.add(sign);
                 scene.add(building);
             });
 
-            // 2. MG 365 자동화 코너 (ATM 부스) 6개 배치
-            for (let i = 0.05; i < 1.0; i += 0.16) {
-                const pt = trackCurve.getPointAt(i);
-                const tan = trackCurve.getTangentAt(i);
-                const norm = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-                const pos = pt.clone().add(norm.multiplyScalar(22));
-
-                const atmGroup = new THREE.Group();
-                const boxGeom = new THREE.BoxGeometry(6, 7, 5);
-                const boxMat = new THREE.MeshStandardMaterial({ color: 0xFFFFFF });
-                const atmBody = new THREE.Mesh(boxGeom, boxMat);
-
-                const frontGeom = new THREE.BoxGeometry(5.2, 5, 0.3);
-                const frontMat = new THREE.MeshStandardMaterial({ color: 0x0288D1 });
-                const front = new THREE.Mesh(frontGeom, frontMat);
-                front.position.set(0, 0, 2.6);
-
-                const topSign = new THREE.Mesh(new THREE.BoxGeometry(5.8, 1.2, 5.2), new THREE.MeshStandardMaterial({ color: 0x00B0FF }));
-                topSign.position.set(0, 4.0, 0);
-
-                atmGroup.add(atmBody, front, topSign);
-                atmGroup.position.set(pos.x, 3.5, pos.z);
-                atmGroup.rotation.y = Math.atan2(tan.x, tan.z);
-                scene.add(atmGroup);
-            }
-
-            // 3. 트랙변 대형 MG 빌보드 전광판 배치
-            for (let i = 0.12; i < 1.0; i += 0.2) {
-                const pt = trackCurve.getPointAt(i);
-                const tan = trackCurve.getTangentAt(i);
-                const norm = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-                const pos = pt.clone().add(norm.multiplyScalar(-24));
-
-                const boardGroup = new THREE.Group();
-                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 16), new THREE.MeshStandardMaterial({ color: 0x757575 }));
-                pole.position.y = 8;
-
-                const board = new THREE.Mesh(new THREE.BoxGeometry(16, 8, 1), new THREE.MeshStandardMaterial({ color: 0x01579B }));
-                board.position.y = 14;
-
-                const innerBoard = new THREE.Mesh(new THREE.BoxGeometry(14, 6, 1.2), new THREE.MeshStandardMaterial({ color: 0xFFD700 }));
-                innerBoard.position.y = 14;
-
-                boardGroup.add(pole, board, innerBoard);
-                boardGroup.position.set(pos.x, 0, pos.z);
-                boardGroup.rotation.y = Math.atan2(tan.x, tan.z) + Math.PI / 2;
-                scene.add(boardGroup);
-            }
-
-            // 4. 가로수 나무 배치
             for (let i = 0; i < 1.0; i += 0.02) {
                 const pt = trackCurve.getPointAt(i);
                 const tan = trackCurve.getTangentAt(i);
@@ -383,13 +316,10 @@ game_html = """<!DOCTYPE html>
                 [-32, 32].forEach(offset => {
                     const pos = pt.clone().add(norm.clone().multiplyScalar(offset));
                     const treeGroup = new THREE.Group();
-                    
                     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 4), new THREE.MeshStandardMaterial({ color: 0x5D4037 }));
                     trunk.position.y = 2;
-                    
                     const leaves = new THREE.Mesh(new THREE.ConeGeometry(3, 8, 8), new THREE.MeshStandardMaterial({ color: 0x2E7D32 }));
                     leaves.position.y = 7;
-                    
                     treeGroup.add(trunk, leaves);
                     treeGroup.position.set(pos.x, 0, pos.z);
                     scene.add(treeGroup);
@@ -397,9 +327,11 @@ game_html = """<!DOCTYPE html>
             }
         }
 
+        // 1. 세밀해진 캐릭터 디자인 메쉬 구현
         function createBirdKartModel(p) {
             const group = new THREE.Group();
 
+            // 바퀴 & 하부 카트
             const wheelGeom = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 16);
             const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
             [[-1.2, 1.0], [1.2, 1.0], [-1.2, -1.0], [1.2, -1.0]].forEach(pos => {
@@ -414,21 +346,23 @@ game_html = """<!DOCTYPE html>
             base.position.y = 0.35;
             group.add(base);
 
-            const birdBlueMat = new THREE.MeshStandardMaterial({ color: p.bodyColor, roughness: 0.3 });
+            // 새망이 몸통 및 머리
+            const birdBlueMat = new THREE.MeshStandardMaterial({ color: p.bodyColor, roughness: 0.2 });
             const body = new THREE.Mesh(new THREE.SphereGeometry(1.0, 16, 16), birdBlueMat);
             body.scale.set(1.0, 1.1, 1.0);
             body.position.set(0, 1.3, 0);
             group.add(body);
 
+            // 부리
             const beakMat = new THREE.MeshStandardMaterial({ color: 0xFF8C00 });
             const beak = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.6, 8), beakMat);
             beak.rotation.x = Math.PI / 2;
             beak.position.set(0, 1.25, 0.9);
             group.add(beak);
 
+            // 눈
             const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xFFFFFF });
             const eyeBlackMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
-            
             [-0.35, 0.35].forEach(x => {
                 const eyeW = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), eyeWhiteMat);
                 eyeW.position.set(x, 1.45, 0.75);
@@ -437,57 +371,75 @@ game_html = """<!DOCTYPE html>
                 group.add(eyeW, eyeB);
             });
 
+            // 각 캐릭터별 독보적 커스텀 디자인
             if (p.id === "leader") {
+                // 대장: 황금 왕관, 노란 셔츠, 빨간 볼터치, 망토
+                const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 0.5, 6), new THREE.MeshStandardMaterial({ color: 0xFFD700, metalness: 0.8 }));
+                crown.position.set(0, 2.3, 0);
                 const shirt = new THREE.Mesh(new THREE.CylinderGeometry(1.02, 1.02, 0.7, 16), new THREE.MeshStandardMaterial({ color: 0xFFD700 }));
                 shirt.position.set(0, 0.95, 0);
-                const cheekMat = new THREE.MeshStandardMaterial({ color: 0xFF6B81 });
-                const c1 = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), cheekMat); c1.position.set(-0.65, 1.2, 0.7);
-                const c2 = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), cheekMat); c2.position.set(0.65, 1.2, 0.7);
-                group.add(shirt, c1, c2);
+                const cheekMat = new THREE.MeshStandardMaterial({ color: 0xFF5252 });
+                const c1 = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), cheekMat); c1.position.set(-0.65, 1.2, 0.7);
+                const c2 = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), cheekMat); c2.position.set(0.65, 1.2, 0.7);
+                group.add(crown, shirt, c1, c2);
 
             } else if (p.id === "builder") {
-                const helmet = new THREE.Mesh(new THREE.SphereGeometry(1.05, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xFFC107 }));
-                helmet.position.set(0, 1.65, 0);
-                const goggles = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.08, 8, 16), new THREE.MeshStandardMaterial({ color: 0xFFFFFF }));
-                goggles.rotation.x = Math.PI / 2; goggles.position.set(0, 1.55, 0.75);
-                group.add(helmet, goggles);
+                // 건설: 노란 안전모, 안전 조끼, 망치
+                const helmet = new THREE.Mesh(new THREE.SphereGeometry(1.08, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xFFC107 }));
+                helmet.position.set(0, 1.6, 0);
+                const vest = new THREE.Mesh(new THREE.CylinderGeometry(1.02, 1.02, 0.6, 16), new THREE.MeshStandardMaterial({ color: 0xFF5722 }));
+                vest.position.set(0, 0.9, 0);
+                const hammer = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 0.4), new THREE.MeshStandardMaterial({ color: 0x795548 }));
+                hammer.position.set(1.1, 1.2, 0);
+                group.add(helmet, vest, hammer);
 
             } else if (p.id === "scholar") {
-                const hatTop = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 1.4), new THREE.MeshStandardMaterial({ color: 0x212121 }));
-                hatTop.position.set(0, 2.3, 0);
+                // 학자: 학사모 + 금빛 수술, 안경, 정장 넥타이
+                const hatTop = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 1.5), new THREE.MeshStandardMaterial({ color: 0x212121 }));
+                hatTop.position.set(0, 2.35, 0);
                 const hatBase = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.3, 16), new THREE.MeshStandardMaterial({ color: 0x212121 }));
-                hatBase.position.set(0, 2.1, 0);
-                
-                const glasses = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.04, 8, 16), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+                hatBase.position.set(0, 2.15, 0);
+                const glasses = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.05, 8, 16), new THREE.MeshStandardMaterial({ color: 0x111111 }));
                 glasses.position.set(-0.35, 1.45, 0.85);
                 const glasses2 = glasses.clone(); glasses2.position.set(0.35, 1.45, 0.85);
-                group.add(hatTop, hatBase, glasses, glasses2);
+                const tie = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 0.1), new THREE.MeshStandardMaterial({ color: 0xD32F2F }));
+                tie.position.set(0, 0.8, 0.95);
+                group.add(hatTop, hatBase, glasses, glasses2, tie);
 
             } else if (p.id === "artist") {
-                const beret = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), new THREE.MeshStandardMaterial({ color: 0x37474F }));
-                beret.scale.set(1.2, 0.4, 1.2);
-                beret.position.set(-0.2, 2.1, 0.1);
-                beret.rotation.z = -0.3;
-                group.add(beret);
+                // 화가: 빨간 베레모, 물감 팔레트
+                const beret = new THREE.Mesh(new THREE.SphereGeometry(0.85, 16, 16), new THREE.MeshStandardMaterial({ color: 0xD32F2F }));
+                beret.scale.set(1.2, 0.4, 1.2); beret.position.set(-0.2, 2.15, 0.1); beret.rotation.z = -0.3;
+                const palette = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.1), new THREE.MeshStandardMaterial({ color: 0x8D6E63 }));
+                palette.position.set(-1.1, 1.2, 0.5); palette.rotation.y = 0.5;
+                group.add(beret, palette);
 
             } else if (p.id === "farmer") {
-                const strawHat = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 0.7, 0.25, 16), new THREE.MeshStandardMaterial({ color: 0xD7CCC8 }));
-                strawHat.position.set(0, 2.1, 0);
-                group.add(strawHat);
+                // 농부: 밀짚모자, 멜빵바지
+                const strawHat = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 0.7, 0.2, 16), new THREE.MeshStandardMaterial({ color: 0xD7CCC8 }));
+                strawHat.position.set(0, 2.15, 0);
+                const overalls = new THREE.Mesh(new THREE.CylinderGeometry(1.02, 1.02, 0.7, 16), new THREE.MeshStandardMaterial({ color: 0x33691E }));
+                overalls.position.set(0, 0.9, 0);
+                group.add(strawHat, overalls);
 
             } else if (p.id === "suit") {
-                const suit = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.8, 16), new THREE.MeshStandardMaterial({ color: 0x1A237E }));
+                // 신사: 신사 펠트모자, 수트, 서류가방
+                const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.9, 0.8, 16), new THREE.MeshStandardMaterial({ color: 0x1A237E }));
+                hat.position.set(0, 2.2, 0);
+                const suit = new THREE.Mesh(new THREE.CylinderGeometry(1.02, 1.02, 0.7, 16), new THREE.MeshStandardMaterial({ color: 0x1A237E }));
                 suit.position.set(0, 0.9, 0);
-                const glasses = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.25, 0.1), new THREE.MeshStandardMaterial({ color: 0x000000 }));
-                glasses.position.set(0, 1.48, 0.88);
-                group.add(suit, glasses);
+                const briefcase = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.7, 0.9), new THREE.MeshStandardMaterial({ color: 0x3E2723 }));
+                briefcase.position.set(1.1, 0.8, -0.2);
+                group.add(hat, suit, briefcase);
 
             } else if (p.id === "rocket") {
-                const rocket = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.2, 12), new THREE.MeshStandardMaterial({ color: 0xFF5722 }));
-                rocket.rotation.x = Math.PI / 2;
-                rocket.position.set(-0.6, 1.2, -1.0);
-                const rocket2 = rocket.clone(); rocket2.position.set(0.6, 1.2, -1.0);
-                group.add(rocket, rocket2);
+                // 우주: 고글 헬멧, 로켓 부스터
+                const helmet = new THREE.Mesh(new THREE.SphereGeometry(1.15, 16, 16), new THREE.MeshStandardMaterial({ color: 0xE0E0E0, transparent: true, opacity: 0.8 }));
+                helmet.position.set(0, 1.45, 0);
+                const rocket = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.4, 12), new THREE.MeshStandardMaterial({ color: 0xFF5722 }));
+                rocket.rotation.x = Math.PI / 2; rocket.position.set(-0.6, 1.3, -1.1);
+                const rocket2 = rocket.clone(); rocket2.position.set(0.6, 1.3, -1.1);
+                group.add(helmet, rocket, rocket2);
             }
 
             return group;
@@ -506,17 +458,21 @@ game_html = """<!DOCTYPE html>
                 group.rank = 0;
                 group.speed = 0;
                 group.progressT = 0;
-                group.laneOffset = (i % 2 === 0 ? 1 : -1) * (2 + Math.floor(i / 2) * 2.2);
+                group.laneOffset = (i % 2 === 0 ? 1 : -1) * (2.5 + Math.floor(i / 2) * 2.2);
 
                 group.boosterCooldown = 0;
                 group.boosterActive = 0;
 
+                // AI 주행 실수를 위한 속성
+                group.aiWobbleTimer = Math.random() * 100;
+                group.aiTargetOffset = group.laneOffset;
+
                 if (p.isPlayer) {
                     group.maxSpeed = 1.6;
                 } else {
-                    if (selectedDifficulty === 'EASY') group.maxSpeed = 0.95 + Math.random() * 0.15;
-                    else if (selectedDifficulty === 'MEDIUM') group.maxSpeed = 1.35 + Math.random() * 0.15;
-                    else if (selectedDifficulty === 'HARD') group.maxSpeed = 1.80 + Math.random() * 0.15;
+                    if (selectedDifficulty === 'EASY') group.maxSpeed = 1.0 + Math.random() * 0.15;
+                    else if (selectedDifficulty === 'MEDIUM') group.maxSpeed = 1.4 + Math.random() * 0.15;
+                    else if (selectedDifficulty === 'HARD') group.maxSpeed = 1.85 + Math.random() * 0.15;
                 }
 
                 const startT = (1 - (i * 12 / trackLen)) % 1;
@@ -544,9 +500,9 @@ game_html = """<!DOCTYPE html>
 
             karts.forEach(k => {
                 if (!k.info.isPlayer) {
-                    if (selectedDifficulty === 'EASY') k.maxSpeed = 0.95 + Math.random() * 0.15;
-                    else if (selectedDifficulty === 'MEDIUM') k.maxSpeed = 1.35 + Math.random() * 0.15;
-                    else if (selectedDifficulty === 'HARD') k.maxSpeed = 1.80 + Math.random() * 0.15;
+                    if (selectedDifficulty === 'EASY') k.maxSpeed = 1.0 + Math.random() * 0.15;
+                    else if (selectedDifficulty === 'MEDIUM') k.maxSpeed = 1.4 + Math.random() * 0.15;
+                    else if (selectedDifficulty === 'HARD') k.maxSpeed = 1.85 + Math.random() * 0.15;
                 }
             });
 
@@ -601,7 +557,7 @@ game_html = """<!DOCTYPE html>
             if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
         }
 
-        function syncPlayerProgressT(kart) {
+        function syncProgressT(kart) {
             let bestT = kart.progressT;
             let minDist = 99999;
             for (let i = -8; i <= 8; i++) {
@@ -616,8 +572,9 @@ game_html = """<!DOCTYPE html>
             kart.progressT = bestT;
         }
 
+        // 2. 강력해진 벽 반발력 (튕겨져 나가고 속도 감소)
         function checkWallCollision(kart) {
-            syncPlayerProgressT(kart);
+            syncProgressT(kart);
 
             const pt = trackCurve.getPointAt(kart.progressT);
             const tan = trackCurve.getTangentAt(kart.progressT);
@@ -626,15 +583,55 @@ game_html = """<!DOCTYPE html>
             const toKart = new THREE.Vector3().subVectors(kart.position, pt);
             let offset = toKart.dot(norm);
 
-            const maxOffset = (trackWidth / 2) - 1.5;
+            const maxOffset = (trackWidth / 2) - 1.2;
 
             if (Math.abs(offset) > maxOffset) {
-                const clampedOffset = Math.sign(offset) * (maxOffset - 0.8);
+                // 강력한 안쪽 반발 위치 튕김
+                const bounceDistance = 3.2;
+                const clampedOffset = Math.sign(offset) * (maxOffset - bounceDistance);
                 kart.position.copy(pt).add(norm.multiplyScalar(clampedOffset));
                 kart.position.y = 0.25;
 
-                kart.speed = Math.max(0.1, kart.speed * 0.3);
-                kart.rotation.y += (offset > 0 ? -0.08 : 0.08);
+                // 속도 급감 (충돌 감속)
+                kart.speed = Math.max(0.1, kart.speed * 0.2);
+
+                // 차체 바깥쪽 반사 회전 충격
+                kart.rotation.y += (offset > 0 ? -0.35 : 0.35);
+            }
+        }
+
+        // 3. 차량 간 충돌 물리 및 감속 처리
+        function checkKartToKartCollisions() {
+            const collisionRadius = 2.6; // 충돌 판정 거리
+
+            for (let i = 0; i < karts.length; i++) {
+                for (let j = i + 1; j < karts.length; j++) {
+                    let k1 = karts[i];
+                    let k2 = karts[j];
+
+                    if (k1.finished || k2.finished) continue;
+
+                    let dist = k1.position.distanceTo(k2.position);
+
+                    if (dist < collisionRadius && dist > 0.01) {
+                        let overlap = collisionRadius - dist;
+
+                        let pushDir = new THREE.Vector3().subVectors(k1.position, k2.position).normalize();
+                        pushDir.y = 0; // 평면 튕김
+
+                        // 서로 밀려남 (위치 튕김 보정)
+                        k1.position.add(pushDir.clone().multiplyScalar(overlap * 0.6));
+                        k2.position.sub(pushDir.clone().multiplyScalar(overlap * 0.6));
+
+                        // 충돌 시 양쪽 모두 속도 감속 물리 적용
+                        k1.speed *= 0.55;
+                        k2.speed *= 0.55;
+
+                        // 충돌 회전 충격
+                        k1.rotation.y += (Math.random() - 0.5) * 0.2;
+                        k2.rotation.y += (Math.random() - 0.5) * 0.2;
+                    }
+                }
             }
         }
 
@@ -674,19 +671,42 @@ game_html = """<!DOCTYPE html>
                     checkWallCollision(kart);
 
                 } else {
-                    if (kart.boosterCooldown === 0 && kart.boosterActive === 0) {
+                    // 4. AI 실감나는 비완벽 주행 (실수로 핸들 흔들림 및 벽/차량 충돌)
+                    kart.aiWobbleTimer++;
+                    if (kart.aiWobbleTimer > 80 + Math.random() * 80) {
+                        let errorMagnitude = selectedDifficulty === 'EASY' ? 10 : (selectedDifficulty === 'MEDIUM' ? 6 : 2.5);
+                        kart.aiTargetOffset = kart.laneOffset + (Math.random() - 0.5) * errorMagnitude;
+                        kart.aiWobbleTimer = 0;
+                    }
+
+                    if (kart.boosterCooldown === 0 && kart.boosterActive === 0 && Math.random() < 0.005) {
                         kart.boosterActive = 120;
                         kart.boosterCooldown = 600;
                     }
 
-                    kart.progressT = (kart.progressT + (currentMaxSpeed / trackCurve.getLength())) % 1;
-                    const pt = trackCurve.getPointAt(kart.progressT);
-                    const tan = trackCurve.getTangentAt(kart.progressT);
-                    const norm = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+                    syncProgressT(kart);
+                    let lookAhead = selectedDifficulty === 'HARD' ? 0.018 : 0.012;
+                    let targetT = (kart.progressT + lookAhead + 1) % 1;
+                    let targetPt = trackCurve.getPointAt(targetT);
+                    let tan = trackCurve.getTangentAt(targetT);
+                    let norm = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+                    let desiredPos = targetPt.clone().add(norm.multiplyScalar(kart.aiTargetOffset));
 
-                    kart.position.copy(pt).add(norm.multiplyScalar(kart.laneOffset));
-                    kart.position.y = 0.25;
-                    kart.rotation.y = Math.atan2(tan.x, tan.z);
+                    let dx = desiredPos.x - kart.position.x;
+                    let dz = desiredPos.z - kart.position.z;
+                    let targetAngle = Math.atan2(dx, dz);
+
+                    let angleDiff = targetAngle - kart.rotation.y;
+                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+                    kart.rotation.y += angleDiff * 0.08; // 자연스러운 조향 조절
+
+                    kart.speed = Math.min(kart.speed + 0.03, currentMaxSpeed);
+                    kart.translateZ(kart.speed);
+
+                    // AI도 벽과 충돌하도록 설정!
+                    checkWallCollision(kart);
                 }
 
                 const targetCP = checkpoints[kart.nextCP];
@@ -706,6 +726,9 @@ game_html = """<!DOCTYPE html>
                     }
                 }
             });
+
+            // 차량 간 충돌 연산 적용
+            checkKartToKartCollisions();
 
             const bText = document.getElementById("boostText");
             if (playerKart.boosterActive > 0) {
