@@ -1,133 +1,160 @@
-import pygame
-import math
-import sys
+import streamlit as st
+import streamlit.components.v1 as components
 
-# Pygame 초기화
-pygame.init()
+st.set_page_config(page_title="포켓몬 카트라이더", layout="centered")
 
-# 화면 설정
-WIDTH, HEIGHT = 800, 600
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("포켓몬 카트라이더 (Pokémon Kart)")
+st.title("⚡ 포켓몬 카트라이더 (Streamlit Ver.)")
+st.write("방향키(↑↓←→)로 이동하고, **Space바**를 눌러 **백만볼트 부스터**를 사용하세요!")
 
-# 색상 정의
-GREEN = (34, 139, 34)
-GRAY = (100, 100, 100)
-WHITE = (255, 255, 255)
-YELLOW = (255, 215, 0)  # 피카츄
-BLUE = (30, 144, 255)   # 꼬북이
-BLACK = (0, 0, 0)
+# HTML5 + Canvas + JS 기반 게임 코드
+game_html = """
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { margin: 0; padding: 0; background-color: #0e1117; display: flex; justify-content: center; align-items: center; }
+        canvas { border: 3px solid #ffffff; background-color: #228B22; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
 
-clock = pygame.time.Clock()
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
 
-class Kart:
-    def __init__(self, x, y, color, name):
-        self.x = x
-        self.y = y
-        self.color = color
-        self.name = name
-        self.angle = 0
-        self.speed = 0
-        self.max_speed = 6.5
-        self.acceleration = 0.12
-        self.friction = 0.04
-        self.turn_speed = 3.5
-        self.boost_timer = 0
+        // 키 입력 이벤트 수신
+        const keys = {};
+        window.addEventListener("keydown", (e) => {
+            keys[e.code] = true;
+            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) {
+                e.preventDefault(); // 스크롤 방지
+            }
+        });
+        window.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
-    def update(self, keys=None, is_ai=False):
-        if not is_ai and keys:
-            # 방향 조향
-            if keys[pygame.K_LEFT]:
-                self.angle += self.turn_speed * (self.speed / self.max_speed if self.speed != 0 else 1)
-            if keys[pygame.K_RIGHT]:
-                self.angle -= self.turn_speed * (self.speed / self.max_speed if self.speed != 0 else 1)
+        class Kart {
+            constructor(x, y, color, name, isAI = false) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.name = name;
+                this.angle = 0;
+                this.speed = 0;
+                this.maxSpeed = isAI ? 3.5 : 6.0;
+                this.accel = 0.15;
+                this.friction = 0.05;
+                this.turnSpeed = 0.06;
+                this.boostTimer = 0;
+                this.isAI = isAI;
+            }
 
-            # 가속 및 감속
-            if keys[pygame.K_UP]:
-                self.speed = min(self.speed + self.acceleration, self.max_speed)
-            elif keys[pygame.K_DOWN]:
-                self.speed = max(self.speed - self.acceleration, -self.max_speed / 2)
-            else:
-                if self.speed > 0:
-                    self.speed = max(0, self.speed - self.friction)
-                elif self.speed < 0:
-                    self.speed = min(0, self.speed + self.friction)
+            update() {
+                if (!this.isAI) {
+                    if (keys["ArrowLeft"]) this.angle -= this.turnSpeed * (this.speed !== 0 ? Math.sign(this.speed) : 1);
+                    if (keys["ArrowRight"]) this.angle += this.turnSpeed * (this.speed !== 0 ? Math.sign(this.speed) : 1);
 
-            # 피카츄 백만볼트 부스터 (스페이스바)
-            if keys[pygame.K_SPACE] and self.boost_timer == 0:
-                self.boost_timer = 45  # 부스터 지속 시간 (프레임 단위)
-                self.speed = self.max_speed * 1.6
+                    if (keys["ArrowUp"]) {
+                        this.speed = Math.min(this.speed + this.accel, this.maxSpeed);
+                    } else if (keys["ArrowDown"]) {
+                        this.speed = Math.max(this.speed - this.accel, -this.maxSpeed / 2);
+                    } else {
+                        if (this.speed > 0) this.speed = Math.max(0, this.speed - this.friction);
+                        if (this.speed < 0) this.speed = Math.min(0, this.speed + this.friction);
+                    }
 
-        if self.boost_timer > 0:
-            self.boost_timer -= 1
+                    if (keys["Space"] && this.boostTimer === 0) {
+                        this.boostTimer = 40;
+                        this.speed = this.maxSpeed * 1.6;
+                    }
+                } else {
+                    // AI 꼬북이 원형 트랙 선회
+                    this.angle += 0.015;
+                    this.speed = this.maxSpeed;
+                }
 
-        # 위치 업데이트
-        rad = math.radians(self.angle)
-        self.x += self.speed * math.cos(rad)
-        self.y -= self.speed * math.sin(rad)
+                if (this.boostTimer > 0) this.boostTimer--;
 
-    def draw(self, surface):
-        rad = math.radians(self.angle)
-        size = 14
-        
-        # 카트 그리기 (삼각형 형태의 차량)
-        points = [
-            (self.x + math.cos(rad) * size * 1.5, self.y - math.sin(rad) * size * 1.5),
-            (self.x + math.cos(rad + 2.4) * size, self.y - math.sin(rad + 2.4) * size),
-            (self.x + math.cos(rad - 2.4) * size, self.y - math.sin(rad - 2.4) * size),
-        ]
+                this.x += this.speed * Math.cos(this.angle);
+                this.y += this.speed * Math.sin(this.angle);
+            }
 
-        # 부스터 발동 이펙트
-        if self.boost_timer > 0:
-            pygame.draw.circle(surface, (255, 255, 0), (int(self.x), int(self.y)), size + 8, 3)
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
 
-        pygame.draw.polygon(surface, self.color, points)
-        pygame.draw.polygon(surface, BLACK, points, 2)
+                // 부스터 효과
+                if (this.boostTimer > 0) {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 20, 0, Math.PI * 2);
+                    ctx.strokeStyle = "#FFFF00";
+                    ctx.lineWidth = 4;
+                    ctx.stroke();
+                }
 
-        # 캐릭터 이름 표시
-        font = pygame.font.SysFont("malgungothic", 14)
-        text = font.render(self.name, True, BLACK)
-        surface.blit(text, (self.x - 18, self.y - 28))
+                // 카트 모델링
+                ctx.beginPath();
+                ctx.moveTo(18, 0);
+                ctx.lineTo(-12, -10);
+                ctx.lineTo(-12, 10);
+                ctx.closePath();
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.strokeStyle = "#000000";
+                ctx.lineWidth = 2;
+                ctx.stroke();
 
-def main():
-    player = Kart(400, 520, YELLOW, "피카츄")
-    ai_kart = Kart(400, 550, BLUE, "꼬북이")
+                ctx.restore();
 
-    running = True
-    while running:
-        clock.tick(60)
+                // 캐릭터 이름
+                ctx.fillStyle = "#FFFFFF";
+                ctx.font = "bold 13px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText(this.name, this.x, this.y - 20);
+            }
+        }
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
+        const player = new Kart(400, 520, "#FFD700", "피카츄⚡");
+        const ai = new Kart(400, 550, "#1E90FF", "꼬북이🐢", true);
 
-        keys = pygame.key.get_pressed()
-        player.update(keys=keys)
+        function drawTrack() {
+            ctx.fillStyle = "#646464";
+            ctx.beginPath();
+            ctx.ellipse(400, 300, 320, 220, 0, 0, Math.PI * 2);
+            ctx.fill();
 
-        # AI 꼬북이 자동 주행 로직
-        ai_kart.angle += 0.8
-        ai_kart.speed = 3.5
-        ai_kart.update(is_ai=True)
+            ctx.fillStyle = "#228B22";
+            ctx.beginPath();
+            ctx.ellipse(400, 300, 200, 120, 0, 0, Math.PI * 2);
+            ctx.fill();
 
-        # 트랙 및 배경 그리기
-        screen.fill(GREEN)
-        pygame.draw.ellipse(screen, GRAY, (100, 80, 600, 440))       # 외각 도로
-        pygame.draw.ellipse(screen, GREEN, (220, 180, 360, 240))     # 중앙 잔디 영역
-        pygame.draw.line(screen, WHITE, (400, 480), (400, 580), 4)   # 스타트라인
+            ctx.strokeStyle = "#FFFFFF";
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(400, 420);
+            ctx.lineTo(400, 520);
+            ctx.stroke();
+        }
 
-        # 캐릭터 그리기
-        player.draw(screen)
-        ai_kart.draw(screen)
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        # UI 가이드
-        font = pygame.font.SysFont("malgungothic", 18)
-        guide = font.render("조작: 방향키 (운전) | Space (백만볼트 부스터)", True, WHITE)
-        screen.blit(guide, (20, 20))
+            drawTrack();
 
-        pygame.display.flip()
+            player.update();
+            ai.update();
 
-    pygame.quit()
-    sys.exit()
+            player.draw();
+            ai.draw();
 
-if __name__ == "__main__":
-    main()
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
+"""
+
+components.html(game_html, height=650)
