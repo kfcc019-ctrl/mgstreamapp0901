@@ -20,7 +20,7 @@ game_html = """<!DOCTYPE html>
         }
 
         #startScreen {
-            pointer-events: auto; background: rgba(15, 15, 25, 0.75); padding: 25px 45px;
+            pointer-events: auto; background: rgba(15, 15, 25, 0.85); padding: 25px 45px;
             border-radius: 20px; text-align: center; border: 3px solid #FFD700;
             box-shadow: 0 0 25px rgba(255,215,0,0.4); backdrop-filter: blur(4px);
         }
@@ -139,7 +139,6 @@ game_html = """<!DOCTYPE html>
             createEnvironment();
             spawnPokemonKarts();
 
-            // 시작할 때부터 카트 후면 카메라 초기화
             updateCamera();
 
             window.addEventListener("keydown", (e) => handleKey(e, true));
@@ -329,7 +328,7 @@ game_html = """<!DOCTYPE html>
                     group.maxSpeed = 1.6;
                 } else {
                     if (selectedDifficulty === 'EASY') group.maxSpeed = 0.95 + Math.random() * 0.15;
-                    else if (selectedDifficulty === 'MEDIUM') k.maxSpeed = 1.35 + Math.random() * 0.15;
+                    else if (selectedDifficulty === 'MEDIUM') group.maxSpeed = 1.35 + Math.random() * 0.15;
                     else if (selectedDifficulty === 'HARD') group.maxSpeed = 1.80 + Math.random() * 0.15;
                 }
 
@@ -406,7 +405,6 @@ game_html = """<!DOCTYPE html>
             kart.progressT = bestT;
         }
 
-        // 벽 충돌 제어 (음수 속도 제거 및 정지 처리)
         function checkWallCollision(kart) {
             syncPlayerProgressT(kart);
 
@@ -423,7 +421,7 @@ game_html = """<!DOCTYPE html>
                 const clampedOffset = Math.sign(offset) * maxOffset;
                 kart.position.copy(pt).add(norm.multiplyScalar(clampedOffset));
                 kart.position.y = 0.25;
-                kart.speed = 0; // 벽 충돌 시 즉시 정지 (음수 속도 방지로 조향 반전 차단)
+                kart.speed = 0;
             }
         }
 
@@ -442,7 +440,6 @@ game_html = """<!DOCTYPE html>
                 const currentMaxSpeed = kart.boosterActive > 0 ? kart.maxSpeed * 1.6 : kart.maxSpeed;
 
                 if (kart.info.isPlayer) {
-                    // 고정된 조향각 (반전 없이 정방향 유지)
                     if (keys.left) kart.rotation.y += 0.028;
                     if (keys.right) kart.rotation.y -= 0.028;
 
@@ -536,7 +533,6 @@ game_html = """<!DOCTYPE html>
             document.getElementById("winnerModal").style.display = "block";
         }
 
-        // 카트라이더 백뷰 카메라 위치 동기화
         function updateCamera() {
             if (!playerKart) return;
             const offset = new THREE.Vector3(0, 6, -15);
@@ -554,7 +550,7 @@ game_html = """<!DOCTYPE html>
         function animate() {
             requestAnimationFrame(animate);
             updatePhysics();
-            updateCamera(); // 시작 화면/카운트다운 중에도 플레이어 후면 시점 적용
+            updateCamera();
             renderer.render(scene, camera);
         }
     </script>
