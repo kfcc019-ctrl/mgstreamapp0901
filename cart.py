@@ -113,7 +113,7 @@ game_html = """
         const totalLaps = 3;
         const totalCheckpoints = 12;
         let checkpoints = [];
-        const trackHalfWidth = 16.5; // 트랙 반폭 (벽 판정 기준)
+        const trackWidth = 28; // 도로 전체 폭
 
         const keys = { forward: false, backward: false, left: false, right: false, boost: false };
 
@@ -122,7 +122,7 @@ game_html = """
 
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x5c94fc);
+            scene.background = new THREE.Color(0x64B5F6);
 
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 2000);
             renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -135,7 +135,7 @@ game_html = """
             dirLight.position.set(200, 400, 100);
             scene.add(dirLight);
 
-            createTrackAndWalls();
+            createCleanTrackAndWalls();
             createStartFinishLine();
             createEnvironment();
             spawnPokemonKarts();
@@ -151,8 +151,8 @@ game_html = """
             btn.classList.add('active');
         }
 
-        // 트랙 및 외곽 가드레일(벽) 생성
-        function createTrackAndWalls() {
+        // 선명한 아스팔트 도로 및 외곽 가드레일 벽 생성 (시야 차단 없는 구조)
+        function createCleanTrackAndWalls() {
             const controlPoints = [
                 new THREE.Vector3(0, 0, 0),
                 new THREE.Vector3(220, 0, 0),
@@ -169,30 +169,65 @@ game_html = """
             ];
 
             trackCurve = new THREE.CatmullRomCurve3(controlPoints, true);
-            
-            // 도로
-            const tubeGeom = new THREE.TubeGeometry(trackCurve, 300, 18, 12, true);
-            const roadMat = new THREE.MeshStandardMaterial({ color: 0x333333, side: THREE.DoubleSide });
-            const trackMesh = new THREE.Mesh(tubeGeom, roadMat);
-            trackMesh.scale.set(1, 0.04, 1);
-            trackMesh.position.y = 0.2;
-            scene.add(trackMesh);
+            const divisions = 400;
+            const wallHeight = 2.0;
 
-            // 외곽 가드레일 벽 (양쪽)
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0xDD2C00 }); // 선명한 주황-빨강 가드레일
-            
-            const outerWallGeom = new THREE.TubeGeometry(trackCurve, 300, 19.5, 8, true);
-            const outerWall = new THREE.Mesh(outerWallGeom, wallMat);
-            outerWall.scale.set(1, 0.3, 1);
-            outerWall.position.y = 1.2;
-            scene.add(outerWall);
+            const roadGeom = new THREE.BufferGeometry();
+            const positions = [];
+            const leftWallPos = [];
+            const rightWallPos = [];
 
-            const innerWallGeom = new THREE.TubeGeometry(trackCurve, 300, 16.5, 8, true);
-            const innerWall = new THREE.Mesh(innerWallGeom, wallMat);
-            innerWall.scale.set(1, 0.3, 1);
-            innerWall.position.y = 1.2;
-            scene.add(innerWall);
+            for (let i = 0; i <= divisions; i++) {
+                const t = i / divisions;
+                const pt = trackCurve.getPointAt(t);
+                const tan = trackCurve.getTangentAt(t);
+                const norm = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
 
+                const leftPt = pt.clone().add(norm.clone().multiplyScalar(trackWidth / 2));
+                const rightPt = pt.clone().add(norm.clone().multiplyScalar(-trackWidth / 2));
+
+                // 도로 버텍스 (y=0.25)
+                positions.push(leftPt.x, 0.25, leftPt.z);
+                positions.push(rightPt.x, 0.25, rightPt.z);
+
+                // 좌측 가드레일 버텍스 (y=0.25 ~ y=2.25)
+                leftWallPos.push(leftPt.x, 0.25, leftPt.z);
+                leftWallPos.push(leftPt.x, wallHeight + 0.25, leftPt.z);
+
+                // 우측 가드레일 버텍스
+                rightWallPos.push(rightPt.x, 0.25, rightPt.z);
+                rightWallPos.push(rightPt.x, wallHeight + 0.25, rightPt.z);
+            }
+
+            const indices = [];
+            for (let i = 0; i < divisions; i++) {
+                const r1 = i * 2, r2 = (i + 1) * 2;
+                indices.push(r1, r1 + 1, r2, r1 + 1, r2 + 1, r2);
+            }
+
+            // 1. 아스팔트 메인 도로
+            roadGeom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            roadGeom.setIndex(indices);
+            roadGeom.computeVertexNormals();
+            const roadMat = new THREE.MeshStandardMaterial({ color: 0x2A2A2A, side: THREE.DoubleSide, roughness: 0.8 });
+            scene.add(new THREE.Mesh(roadGeom, roadMat));
+
+            // 2. 외곽 가드레일 벽 (빨간색)
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0xE53935, side: THREE.DoubleSide });
+
+            const leftWallGeom = new THREE.BufferGeometry();
+            leftWallGeom.setAttribute('position', new THREE.Float32BufferAttribute(leftWallPos, 3));
+            leftWallGeom.setIndex(indices);
+            leftWallGeom.computeVertexNormals();
+            scene.add(new THREE.Mesh(leftWallGeom, wallMat));
+
+            const rightWallGeom = new THREE.BufferGeometry();
+            rightWallGeom.setAttribute('position', new THREE.Float32BufferAttribute(rightWallPos, 3));
+            rightWallGeom.setIndex(indices);
+            rightWallGeom.computeVertexNormals();
+            scene.add(new THREE.Mesh(rightWallGeom, wallMat));
+
+            // 체크포인트 생성
             checkpoints = [];
             for (let i = 0; i < totalCheckpoints; i++) {
                 checkpoints.push(trackCurve.getPointAt(i / totalCheckpoints));
@@ -205,12 +240,12 @@ game_html = """
             const angle = Math.atan2(tan.x, tan.z);
 
             const archGroup = new THREE.Group();
-            const poleGeom = new THREE.CylinderGeometry(1, 1, 16);
+            const poleGeom = new THREE.CylinderGeometry(0.8, 0.8, 14);
             const poleMat = new THREE.MeshStandardMaterial({ color: 0xFFD700 });
             
-            const p1 = new THREE.Mesh(poleGeom, poleMat); p1.position.set(-18, 8, 0);
-            const p2 = new THREE.Mesh(poleGeom, poleMat); p2.position.set(18, 8, 0);
-            const top = new THREE.Mesh(new THREE.BoxGeometry(38, 3, 3), poleMat); top.position.set(0, 15, 0);
+            const p1 = new THREE.Mesh(poleGeom, poleMat); p1.position.set(-15, 7, 0);
+            const p2 = new THREE.Mesh(poleGeom, poleMat); p2.position.set(15, 7, 0);
+            const top = new THREE.Mesh(new THREE.BoxGeometry(32, 2, 2), poleMat); top.position.set(0, 13, 0);
 
             archGroup.add(p1, p2, top);
             archGroup.position.set(startPt.x, 0, startPt.z);
@@ -221,19 +256,19 @@ game_html = """
         function createEnvironment() {
             const grass = new THREE.Mesh(
                 new THREE.PlaneGeometry(2500, 2500),
-                new THREE.MeshStandardMaterial({ color: 0x388E3C })
+                new THREE.MeshStandardMaterial({ color: 0x4CAF50 })
             );
             grass.rotation.x = -Math.PI / 2;
-            grass.position.y = -0.1;
+            grass.position.y = 0;
             scene.add(grass);
         }
 
         function createPokemonModel(p) {
             const group = new THREE.Group();
 
-            const wheelGeom = new THREE.CylinderGeometry(0.6, 0.6, 0.4, 16);
+            const wheelGeom = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 16);
             const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
-            [[-1.4, 1.2], [1.4, 1.2], [-1.4, -1.2], [1.4, -1.2]].forEach(pos => {
+            [[-1.2, 1.0], [1.2, 1.0], [-1.2, -1.0], [1.2, -1.0]].forEach(pos => {
                 const w = new THREE.Mesh(wheelGeom, wheelMat);
                 w.rotation.z = Math.PI / 2;
                 w.position.set(pos[0], 0.2, pos[1]);
@@ -241,36 +276,36 @@ game_html = """
             });
 
             const bodyMat = new THREE.MeshStandardMaterial({ color: p.color });
-            const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.2, 3), bodyMat);
-            body.position.y = 0.8;
+            const body = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.0, 2.6), bodyMat);
+            body.position.y = 0.7;
             group.add(body);
 
             if (p.id === "pikachu") {
-                const earGeom = new THREE.ConeGeometry(0.3, 1.8, 8);
+                const earGeom = new THREE.ConeGeometry(0.25, 1.5, 8);
                 const earMat = new THREE.MeshStandardMaterial({ color: 0xFFD700 });
-                const ear1 = new THREE.Mesh(earGeom, earMat); ear1.position.set(-0.7, 2.2, 0.5); ear1.rotation.z = -0.3;
-                const ear2 = new THREE.Mesh(earGeom, earMat); ear2.position.set(0.7, 2.2, 0.5); ear2.rotation.z = 0.3;
+                const ear1 = new THREE.Mesh(earGeom, earMat); ear1.position.set(-0.6, 2.0, 0.4); ear1.rotation.z = -0.3;
+                const ear2 = new THREE.Mesh(earGeom, earMat); ear2.position.set(0.6, 2.0, 0.4); ear2.rotation.z = 0.3;
 
-                const cheekGeom = new THREE.SphereGeometry(0.3, 8, 8);
+                const cheekGeom = new THREE.SphereGeometry(0.25, 8, 8);
                 const cheekMat = new THREE.MeshStandardMaterial({ color: 0xFF0000 });
-                const c1 = new THREE.Mesh(cheekGeom, cheekMat); c1.position.set(-1.15, 1.0, 1.1);
-                const c2 = new THREE.Mesh(cheekGeom, cheekMat); c2.position.set(1.15, 1.0, 1.1);
+                const c1 = new THREE.Mesh(cheekGeom, cheekMat); c1.position.set(-1.0, 0.9, 0.9);
+                const c2 = new THREE.Mesh(cheekGeom, cheekMat); c2.position.set(1.0, 0.9, 0.9);
 
-                const tail = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.8, 0.6), earMat);
-                tail.position.set(0, 2.0, -1.6); tail.rotation.x = -0.4;
+                const tail = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.5, 0.5), earMat);
+                tail.position.set(0, 1.8, -1.4); tail.rotation.x = -0.4;
 
                 group.add(ear1, ear2, c1, c2, tail);
             } else if (p.id === "charmander") {
-                const flame = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.2, 8), new THREE.MeshStandardMaterial({ color: 0xFF1100, emissive: 0xFF4400 }));
-                flame.position.set(0, 1.5, -1.8); flame.rotation.x = -0.8;
+                const flame = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.0, 8), new THREE.MeshStandardMaterial({ color: 0xFF1100, emissive: 0xFF4400 }));
+                flame.position.set(0, 1.3, -1.5); flame.rotation.x = -0.8;
                 group.add(flame);
             } else if (p.id === "squirtle") {
-                const shell = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 8), new THREE.MeshStandardMaterial({ color: 0x8D6E63 }));
-                shell.scale.set(1, 0.5, 1.2); shell.position.set(0, 1.5, -0.2);
+                const shell = new THREE.Mesh(new THREE.SphereGeometry(1.0, 16, 8), new THREE.MeshStandardMaterial({ color: 0x8D6E63 }));
+                shell.scale.set(1, 0.5, 1.2); shell.position.set(0, 1.3, -0.2);
                 group.add(shell);
             } else if (p.id === "bulbasaur") {
-                const bulb = new THREE.Mesh(new THREE.SphereGeometry(1.0, 8, 8), new THREE.MeshStandardMaterial({ color: 0x1B5E20 }));
-                bulb.position.set(0, 1.6, -0.3);
+                const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 8), new THREE.MeshStandardMaterial({ color: 0x1B5E20 }));
+                bulb.position.set(0, 1.4, -0.3);
                 group.add(bulb);
             }
 
@@ -290,22 +325,21 @@ game_html = """
                 group.rank = 0;
                 group.speed = 0;
                 group.progressT = 0;
-                group.laneOffset = (i % 2 === 0 ? 1 : -1) * (3 + Math.floor(i / 2) * 2.5);
+                // 트랙 안쪽 안전지대 레이닝
+                group.laneOffset = (i % 2 === 0 ? 1 : -1) * (2 + Math.floor(i / 2) * 2.2);
 
-                // 부스터 시스템 속성 (모든 플레이어 & AI 공통)
-                group.boosterCooldown = 0; // 쿨다운 프레임 (600프레임 = 10초)
-                group.boosterActive = 0;    // 활성화 프레임 (120프레임 = 2초)
+                group.boosterCooldown = 0;
+                group.boosterActive = 0;
 
-                // 난이도별 AI 속도 설정
                 if (p.isPlayer) {
                     group.maxSpeed = 1.6;
                 } else {
-                    if (selectedDifficulty === 'EASY') group.maxSpeed = 1.0 + Math.random() * 0.15;
-                    else if (selectedDifficulty === 'MEDIUM') group.maxSpeed = 1.4 + Math.random() * 0.15;
-                    else if (selectedDifficulty === 'HARD') group.maxSpeed = 1.85 + Math.random() * 0.15; // 상: 매우 빠름
+                    if (selectedDifficulty === 'EASY') group.maxSpeed = 0.95 + Math.random() * 0.15;
+                    else if (selectedDifficulty === 'MEDIUM') group.maxSpeed = 1.35 + Math.random() * 0.15;
+                    else if (selectedDifficulty === 'HARD') group.maxSpeed = 1.80 + Math.random() * 0.15;
                 }
 
-                const startT = (1 - (i * 14 / trackLen)) % 1;
+                const startT = (1 - (i * 12 / trackLen)) % 1;
                 group.progressT = startT;
 
                 const pt = trackCurve.getPointAt(startT);
@@ -313,6 +347,7 @@ game_html = """
                 const norm = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
 
                 group.position.copy(pt).add(norm.multiplyScalar(group.laneOffset));
+                group.position.y = 0.25;
                 group.rotation.y = Math.atan2(tan.x, tan.z);
 
                 karts.push(group);
@@ -328,13 +363,12 @@ game_html = """
             document.getElementById("startScreen").style.display = "none";
             const cdEl = document.getElementById("countdown");
             cdEl.style.display = "block";
-            
-            // 재설정 (난이도 변경 반영)
+
             karts.forEach(k => {
                 if (!k.info.isPlayer) {
-                    if (selectedDifficulty === 'EASY') k.maxSpeed = 1.0 + Math.random() * 0.15;
-                    else if (selectedDifficulty === 'MEDIUM') k.maxSpeed = 1.4 + Math.random() * 0.15;
-                    else if (selectedDifficulty === 'HARD') k.maxSpeed = 1.85 + Math.random() * 0.15;
+                    if (selectedDifficulty === 'EASY') k.maxSpeed = 0.95 + Math.random() * 0.15;
+                    else if (selectedDifficulty === 'MEDIUM') k.maxSpeed = 1.35 + Math.random() * 0.15;
+                    else if (selectedDifficulty === 'HARD') k.maxSpeed = 1.80 + Math.random() * 0.15;
                 }
             });
 
@@ -365,159 +399,20 @@ game_html = """
             if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
         }
 
-        // 트랙과의 거리 및 벽 충돌 검사
-        function checkWallCollision(kart) {
-            // 가장 가까운 트랙 포인트 탐색
-            let closestPt = trackCurve.getPointAt(kart.progressT || 0);
-            let dist = kart.position.distanceTo(closestPt);
-
-            // 벽 충돌 (도로 이탈 시)
-            if (dist > trackHalfWidth) {
-                // 반튀어나가기 물리 및 속도 급감
-                const pushDir = new THREE.Vector3().subVectors(closestPt, kart.position).normalize();
-                kart.position.add(pushDir.multiplyScalar(1.2)); // 트랙 안쪽으로 튕겨냄
-                kart.speed = -kart.speed * 0.4; // 충돌 충격으로 속도 반전 및 감속
-            }
-        }
-
-        function updatePhysics() {
-            if (gameState !== 'RACING') return;
-
-            karts.forEach((kart) => {
-                if (kart.finished) return;
-
-                // --- 1. 부스터 쿨다운 & 타이머 처리 ---
-                if (kart.boosterActive > 0) {
-                    kart.boosterActive--;
-                } else if (kart.boosterCooldown > 0) {
-                    kart.boosterCooldown--;
+        // 플레이어 차량 위치 기반 진행률(progressT) 동기화
+        function syncPlayerProgressT(kart) {
+            let bestT = kart.progressT;
+            let minDist = 99999;
+            for (let i = -8; i <= 8; i++) {
+                let testT = (kart.progressT + i * 0.002 + 1) % 1;
+                let p = trackCurve.getPointAt(testT);
+                let d = kart.position.distanceTo(p);
+                if (d < minDist) {
+                    minDist = d;
+                    bestT = testT;
                 }
-
-                const currentMaxSpeed = kart.boosterActive > 0 ? kart.maxSpeed * 1.6 : kart.maxSpeed;
-
-                // --- 2. 주행 처리 ---
-                if (kart.info.isPlayer) {
-                    // 조향각 속도 조정 (0.045 -> 0.024로 부드럽고 정교하게 조정)
-                    if (keys.left) kart.rotation.y += 0.024 * (kart.speed >= 0 ? 1 : -1);
-                    if (keys.right) kart.rotation.y -= 0.024 * (kart.speed >= 0 ? 1 : -1);
-
-                    if (keys.forward) {
-                        kart.speed = Math.min(kart.speed + 0.035, currentMaxSpeed);
-                    } else if (keys.backward) {
-                        kart.speed = Math.max(kart.speed - 0.03, -currentMaxSpeed / 2);
-                    } else {
-                        kart.speed *= 0.96;
-                    }
-
-                    // 플레이어 부스터 사용 (10초 쿨다운 = 600프레임, 2초 지속 = 120프레임)
-                    if (keys.boost && kart.boosterCooldown === 0 && kart.boosterActive === 0) {
-                        kart.boosterActive = 120; // 2초
-                        kart.boosterCooldown = 600; // 10초
-                        kart.speed = currentMaxSpeed;
-                    }
-
-                    kart.translateZ(kart.speed);
-                    checkWallCollision(kart);
-
-                } else {
-                    // AI 주행 및 AI 부스터 자동 사용
-                    if (kart.boosterCooldown === 0 && kart.boosterActive === 0) {
-                        // AI도 10초마다 부스터 사용
-                        kart.boosterActive = 120;
-                        kart.boosterCooldown = 600;
-                    }
-
-                    kart.progressT = (kart.progressT + (currentMaxSpeed / trackCurve.getLength())) % 1;
-                    const pt = trackCurve.getPointAt(kart.progressT);
-                    const tan = trackCurve.getTangentAt(kart.progressT);
-                    const norm = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-
-                    kart.position.copy(pt).add(norm.multiplyScalar(kart.laneOffset));
-                    kart.rotation.y = Math.atan2(tan.x, tan.z);
-                }
-
-                // --- 3. 체크포인트 판정 ---
-                const targetCP = checkpoints[kart.nextCP];
-                if (kart.position.distanceTo(targetCP) < 45) {
-                    kart.nextCP = (kart.nextCP + 1) % totalCheckpoints;
-                    if (kart.nextCP === 1) {
-                        kart.lap++;
-                        if (kart.info.isPlayer) {
-                            document.getElementById("lapText").innerText = Math.min(kart.lap, totalLaps);
-                        }
-                        if (kart.lap > totalLaps) {
-                            kart.finished = true;
-                            rankCounter++;
-                            kart.rank = rankCounter;
-                            checkRaceEnd(kart);
-                        }
-                    }
-                }
-            });
-
-            // HUD 부스터 상태 업데이트
-            const bText = document.getElementById("boostText");
-            if (playerKart.boosterActive > 0) {
-                bText.innerText = `🔥 부스터 가속 중! (${(playerKart.boosterActive / 60).toFixed(1)}s)`;
-                bText.style.color = "#FF4500";
-            } else if (playerKart.boosterCooldown > 0) {
-                bText.innerText = `⏳ 쿨다운 중... (${(playerKart.boosterCooldown / 60).toFixed(1)}s)`;
-                bText.style.color = "#AAAAAA";
-            } else {
-                bText.innerText = "사용 가능 (Space)";
-                bText.style.color = "#00FF00";
             }
-
-            updateRankings();
-            updateCamera();
+            kart.progressT = bestT;
         }
 
-        function updateRankings() {
-            karts.sort((a, b) => {
-                if (a.lap !== b.lap) return b.lap - a.lap;
-                return b.nextCP - a.nextCP;
-            });
-            const currentRank = karts.findIndex(k => k.info.isPlayer) + 1;
-            document.getElementById("rankText").innerText = currentRank;
-        }
-
-        function checkRaceEnd(finishedKart) {
-            if (finishedKart.info.isPlayer) {
-                showWinnerModal(`🎉 ${finishedKart.info.name} ${finishedKart.rank}위 도착!`, `3바퀴 완주 성공!`);
-            } else if (rankCounter === 1) {
-                showWinnerModal(`🏆 ${finishedKart.info.name} 우승!`, `상대 포켓몬이 먼저 완주했습니다.`);
-            }
-        }
-
-        function showWinnerModal(title, sub) {
-            gameState = 'FINISHED';
-            document.getElementById("winnerText").innerText = title;
-            document.getElementById("winnerSubText").innerText = sub;
-            document.getElementById("winnerModal").style.display = "block";
-        }
-
-        function updateCamera() {
-            if (!playerKart) return;
-            const offset = new THREE.Vector3(0, 8, -18);
-            const cameraPos = offset.applyMatrix4(playerKart.matrixWorld);
-            camera.position.lerp(cameraPos, 0.2);
-            camera.lookAt(playerKart.position.x, playerKart.position.y + 2, playerKart.position.z);
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            updatePhysics();
-            renderer.render(scene, camera);
-        }
-    </script>
-</body>
-</html>
-"""
-
-components.html(game_html, height=800, scrolling=False)
+        // 정확한 벽 충돌 및 도로 이탈 방지 경
