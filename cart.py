@@ -3,8 +3,8 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="3D 포켓몬 카트라이더", layout="wide")
 
-st.title("⚡ 3D 포켓몬 카트라이더: 3랩 서킷 챔피언십")
-st.write("방향키(↑↓←→)로 이동, **Space바**로 **백만볼트 부스터**를 사용하세요!")
+st.title("⚡ 3D 포켓몬 카트라이더: 캐릭터 서킷")
+st.write("방향키(↑↓←→)로 조향/가속, **Space바**로 **백만볼트 부스터**를 사용하세요!")
 
 game_html = """
 <!DOCTYPE html>
@@ -14,7 +14,6 @@ game_html = """
         body { margin: 0; overflow: hidden; background-color: #0e1117; font-family: 'Malgun Gothic', sans-serif; }
         #gameCanvas { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; }
         
-        /* UI 오버레이 */
         #ui-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; display: flex; flex-direction: column;
@@ -35,8 +34,8 @@ game_html = """
         
         #hud {
             position: absolute; top: 20px; left: 20px; text-align: left;
-            font-size: 22px; font-weight: bold; background: rgba(0,0,0,0.65);
-            padding: 15px 25px; border-radius: 12px; border: 2px solid #555; display: none;
+            font-size: 22px; font-weight: bold; background: rgba(0,0,0,0.75);
+            padding: 15px 25px; border-radius: 12px; border: 2px solid #777; display: none;
         }
         
         #winnerModal {
@@ -72,17 +71,17 @@ game_html = """
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         let scene, camera, renderer, trackCurve;
-        let gameState = 'READY'; // READY, COUNTDOWN, RACING, FINISHED
+        let gameState = 'READY';
         let rankCounter = 0;
 
         const POKEMONS = [
-            { name: "피카츄⚡", color: 0xFFD700, isPlayer: true },
-            { name: "이상해씨🌱", color: 0x32CD32, isPlayer: false },
-            { name: "파이리🔥", color: 0xFF4500, isPlayer: false },
-            { name: "꼬북이💧", color: 0x1E90FF, isPlayer: false },
-            { name: "야돈🌀", color: 0xFFB6C1, isPlayer: false },
-            { name: "고오스👻", color: 0x800080, isPlayer: false },
-            { name: "냐옹🐾", color: 0xFFA500, isPlayer: false }
+            { id: "pikachu", name: "피카츄⚡", color: 0xFFD700, isPlayer: true },
+            { id: "bulbasaur", name: "이상해씨🌱", color: 0x30A727, isPlayer: false },
+            { id: "charmander", name: "파이리🔥", color: 0xFF5722, isPlayer: false },
+            { id: "squirtle", name: "꼬북이💧", color: 0x29B6F6, isPlayer: false },
+            { id: "slowpoke", name: "야돈🌀", color: 0xF48FB1, isPlayer: false },
+            { id: "gastly", name: "고오스👻", color: 0x7E57C2, isPlayer: false },
+            { id: "meowth", name: "냐옹🐾", color: 0xFFE082, isPlayer: false }
         ];
 
         let karts = [];
@@ -99,122 +98,84 @@ game_html = """
 
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x40B5AD);
+            scene.background = new THREE.Color(0x64B5F6); // 선명한 하늘색
 
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 2000);
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.getElementById("gameCanvas").appendChild(renderer.domElement);
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
             scene.add(ambientLight);
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            dirLight.position.set(200, 300, 100);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            dirLight.position.set(200, 400, 100);
             scene.add(dirLight);
 
-            createComplexTrack();
+            createHighVisibilityTrack();
             createStartFinishLine();
             createEnvironment();
-            spawnKarts();
+            spawnPokemonKarts();
 
             window.addEventListener("keydown", (e) => handleKey(e, true));
             window.addEventListener("keyup", (e) => handleKey(e, false));
             window.addEventListener("resize", onWindowResize);
         }
 
-        // 복잡한 서킷 생성 (S자, 헤어핀 코너 포함)
-        function createComplexTrack() {
+        // 선명한 고대비 도로 및 서킷 생성
+        function createHighVisibilityTrack() {
             const controlPoints = [
-                new THREE.Vector3(0, 0, 0),         // 출발선
-                new THREE.Vector3(200, 0, 0),       // 직진
-                new THREE.Vector3(350, 0, 150),     // 우회전
-                new THREE.Vector3(300, 0, 350),     // 급커브
-                new THREE.Vector3(100, 0, 250),     // S자 진입
-                new THREE.Vector3(-50, 0, 450),     // S자 탈출
-                new THREE.Vector3(-250, 0, 300),    // 헤어핀 진입
-                new THREE.Vector3(-350, 0, 100),    // 헤어핀 코너
-                new THREE.Vector3(-200, 0, -100),   // 대각선 직진
-                new THREE.Vector3(-100, 0, -250),   // 하단 곡선
-                new THREE.Vector3(100, 0, -250),    // 복귀 코너
-                new THREE.Vector3(0, 0, -100)       // 직선 연결
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(220, 0, 0),
+                new THREE.Vector3(380, 0, 180),
+                new THREE.Vector3(320, 0, 380),
+                new THREE.Vector3(120, 0, 280),
+                new THREE.Vector3(-60, 0, 480),
+                new THREE.Vector3(-280, 0, 320),
+                new THREE.Vector3(-380, 0, 100),
+                new THREE.Vector3(-220, 0, -120),
+                new THREE.Vector3(-120, 0, -280),
+                new THREE.Vector3(120, 0, -280),
+                new THREE.Vector3(0, 0, -100)
             ];
 
             trackCurve = new THREE.CatmullRomCurve3(controlPoints, true);
-            const trackWidth = 32;
-            const divisions = 400;
+            
+            // 1. 메인 도로 (아스팔트)
+            const tubeGeom = new THREE.TubeGeometry(trackCurve, 300, 18, 12, true);
+            const roadMat = new THREE.MeshStandardMaterial({ color: 0x333333, side: THREE.DoubleSide });
+            const trackMesh = new THREE.Mesh(tubeGeom, roadMat);
+            trackMesh.scale.set(1, 0.04, 1); // 도로로 납작하게 평면화
+            trackMesh.position.y = 0.2;
+            scene.add(trackMesh);
 
-            // 도로 지오메트리 동적 생성
-            const geom = new THREE.BufferGeometry();
-            const positions = [], uvs = [];
+            // 2. 도로 가장자리 빨간색/흰색 억제턱 (커브 가시성)
+            const curbGeom = new THREE.TubeGeometry(trackCurve, 300, 19.5, 12, true);
+            const curbMat = new THREE.MeshStandardMaterial({ color: 0xCC1111, side: THREE.DoubleSide });
+            const curbMesh = new THREE.Mesh(curbGeom, curbMat);
+            curbMesh.scale.set(1, 0.035, 1);
+            curbMesh.position.y = 0.1;
+            scene.add(curbMesh);
 
-            for (let i = 0; i <= divisions; i++) {
-                const t = i / divisions;
-                const pt = trackCurve.getPointAt(t);
-                const tan = trackCurve.getTangentAt(t);
-                const norm = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-
-                const left = pt.clone().add(norm.clone().multiplyScalar(trackWidth / 2));
-                const right = pt.clone().add(norm.clone().multiplyScalar(-trackWidth / 2));
-
-                positions.push(left.x, left.y, left.z);
-                positions.push(right.x, right.y, right.z);
-                uvs.push(0, i * 5); uvs.push(1, i * 5);
-            }
-
-            const indices = [];
-            for (let i = 0; i < divisions; i++) {
-                const r1 = i * 2, r2 = (i + 1) * 2;
-                indices.push(r1, r1 + 1, r2, r1 + 1, r2 + 1, r2);
-            }
-
-            geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-            geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-            geom.setIndex(indices);
-            geom.computeVertexNormals();
-
-            const roadMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
-            scene.add(new THREE.Mesh(geom, roadMat));
-
-            // 체크포인트 위치 저장
+            // 3. 체크포인트 계산
             checkpoints = [];
             for (let i = 0; i < totalCheckpoints; i++) {
                 checkpoints.push(trackCurve.getPointAt(i / totalCheckpoints));
             }
         }
 
-        // 출발 / 도착 아치 및 그리드 선 생성
         function createStartFinishLine() {
             const startPt = trackCurve.getPointAt(0);
             const tan = trackCurve.getTangentAt(0);
             const angle = Math.atan2(tan.x, tan.z);
 
-            // 출발선 격자 바닥
-            const lineGeom = new THREE.PlaneGeometry(32, 8);
-            const canvas = document.createElement('canvas');
-            canvas.width = 128; canvas.height = 32;
-            const ctx = canvas.getContext('2d');
-            for(let r=0; r<2; r++){
-                for(let c=0; c<8; c++){
-                    ctx.fillStyle = (r+c)%2===0 ? '#FFF' : '#000';
-                    ctx.fillRect(c*16, r*16, 16, 16);
-                }
-            }
-            const texture = new THREE.CanvasTexture(canvas);
-            const lineMat = new THREE.MeshStandardMaterial({ map: texture, side: THREE.DoubleSide });
-            const line = new THREE.Mesh(lineGeom, lineMat);
-            line.rotation.x = -Math.PI / 2;
-            line.rotation.z = angle + Math.PI / 2;
-            line.position.set(startPt.x, 0.1, startPt.z);
-            scene.add(line);
-
-            // 출발선 아치 기둥
+            // 아치
             const archGroup = new THREE.Group();
-            const poleGeom = new THREE.CylinderGeometry(0.8, 0.8, 15);
+            const poleGeom = new THREE.CylinderGeometry(1, 1, 16);
             const poleMat = new THREE.MeshStandardMaterial({ color: 0xFFD700 });
             
-            const p1 = new THREE.Mesh(poleGeom, poleMat); p1.position.set(-16, 7.5, 0);
-            const p2 = new THREE.Mesh(poleGeom, poleMat); p2.position.set(16, 7.5, 0);
-            const top = new THREE.Mesh(new THREE.BoxGeometry(34, 2, 2), poleMat); top.position.set(0, 14, 0);
+            const p1 = new THREE.Mesh(poleGeom, poleMat); p1.position.set(-18, 8, 0);
+            const p2 = new THREE.Mesh(poleGeom, poleMat); p2.position.set(18, 8, 0);
+            const top = new THREE.Mesh(new THREE.BoxGeometry(38, 3, 3), poleMat); top.position.set(0, 15, 0);
 
             archGroup.add(p1, p2, top);
             archGroup.position.set(startPt.x, 0, startPt.z);
@@ -224,26 +185,100 @@ game_html = """
 
         function createEnvironment() {
             const grass = new THREE.Mesh(
-                new THREE.PlaneGeometry(2000, 2000),
-                new THREE.MeshStandardMaterial({ color: 0x2e8b57 })
+                new THREE.PlaneGeometry(2500, 2500),
+                new THREE.MeshStandardMaterial({ color: 0x4CAF50 }) // 선명한 녹색 잔디
             );
             grass.rotation.x = -Math.PI / 2;
-            grass.position.y = -0.2;
+            grass.position.y = -0.1;
             scene.add(grass);
         }
 
-        function spawnKarts() {
+        // 입체적인 포켓몬 카트 제작
+        function createPokemonModel(p) {
+            const group = new THREE.Group();
+
+            // 바퀴 4개
+            const wheelGeom = new THREE.CylinderGeometry(0.6, 0.6, 0.4, 16);
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+            [[-1.4, 1.2], [1.4, 1.2], [-1.4, -1.2], [1.4, -1.2]].forEach(pos => {
+                const w = new THREE.Mesh(wheelGeom, wheelMat);
+                w.rotation.z = Math.PI / 2;
+                w.position.set(pos[0], 0.2, pos[1]);
+                group.add(w);
+            });
+
+            // 포켓몬 몸통 (베이스 카트)
+            const bodyMat = new THREE.MeshStandardMaterial({ color: p.color });
+            const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.2, 3), bodyMat);
+            body.position.y = 0.8;
+            group.add(body);
+
+            // 포켓몬 개별 캐릭터 디테일
+            if (p.id === "pikachu") {
+                // 피카츄 귀 2개
+                const earGeom = new THREE.ConeGeometry(0.3, 1.8, 8);
+                const earMat = new THREE.MeshStandardMaterial({ color: 0xFFD700 });
+                const ear1 = new THREE.Mesh(earGeom, earMat);
+                ear1.position.set(-0.7, 2.2, 0.5);
+                ear1.rotation.z = -0.3;
+                const ear2 = new THREE.Mesh(earGeom, earMat);
+                ear2.position.set(0.7, 2.2, 0.5);
+                ear2.rotation.z = 0.3;
+
+                // 빨간 볼 볼따구
+                const cheekGeom = new THREE.SphereGeometry(0.3, 8, 8);
+                const cheekMat = new THREE.MeshStandardMaterial({ color: 0xFF0000 });
+                const c1 = new THREE.Mesh(cheekGeom, cheekMat); c1.position.set(-1.15, 1.0, 1.1);
+                const c2 = new THREE.Mesh(cheekGeom, cheekMat); c2.position.set(1.15, 1.0, 1.1);
+
+                // 번개 꼬리
+                const tailGeom = new THREE.BoxGeometry(0.3, 1.8, 0.6);
+                const tail = new THREE.Mesh(tailGeom, earMat);
+                tail.position.set(0, 2.0, -1.6);
+                tail.rotation.x = -0.4;
+
+                group.add(ear1, ear2, c1, c2, tail);
+            } else if (p.id === "charmander") {
+                // 파이리 꼬리 불꽃
+                const flameGeom = new THREE.ConeGeometry(0.5, 1.2, 8);
+                const flameMat = new THREE.MeshStandardMaterial({ color: 0xFF1100, emissive: 0xFF4400 });
+                const flame = new THREE.Mesh(flameGeom, flameMat);
+                flame.position.set(0, 1.5, -1.8);
+                flame.rotation.x = -0.8;
+                group.add(flame);
+            } else if (p.id === "squirtle") {
+                // 꼬북이 등껍질
+                const shellGeom = new THREE.SphereGeometry(1.2, 16, 8);
+                const shellMat = new THREE.MeshStandardMaterial({ color: 0x8D6E63 });
+                const shell = new THREE.Mesh(shellGeom, shellMat);
+                shell.scale.set(1, 0.5, 1.2);
+                shell.position.set(0, 1.5, -0.2);
+                group.add(shell);
+            } else if (p.id === "bulbasaur") {
+                // 이상해씨 등 봉오리
+                const bulbGeom = new THREE.SphereGeometry(1.0, 8, 8);
+                const bulbMat = new THREE.MeshStandardMaterial({ color: 0x1B5E20 });
+                const bulb = new THREE.Mesh(bulbGeom, bulbMat);
+                bulb.position.set(0, 1.6, -0.3);
+                group.add(bulb);
+            } else if (p.id === "meowth") {
+                // 냐옹이 금화
+                const coinGeom = new THREE.CylinderGeometry(0.4, 0.4, 0.1, 12);
+                const coinMat = new THREE.MeshStandardMaterial({ color: 0xFFD700 });
+                const coin = new THREE.Mesh(coinGeom, coinMat);
+                coin.rotation.x = Math.PI / 2;
+                coin.position.set(0, 1.8, 1.3);
+                group.add(coin);
+            }
+
+            return group;
+        }
+
+        function spawnPokemonKarts() {
             const trackLen = trackCurve.getLength();
 
             POKEMONS.forEach((p, i) => {
-                const group = new THREE.Group();
-
-                // 차체
-                const body = new THREE.Mesh(
-                    new THREE.BoxGeometry(2, 1.2, 3),
-                    new THREE.MeshStandardMaterial({ color: p.color })
-                );
-                group.add(body);
+                const group = createPokemonModel(p);
 
                 group.info = p;
                 group.lap = 1;
@@ -251,12 +286,11 @@ game_html = """
                 group.finished = false;
                 group.rank = 0;
                 group.speed = 0;
-                group.maxSpeed = p.isPlayer ? 1.6 : 1.25 + Math.random() * 0.25;
-                group.progressT = 0; // AI 위치 파라미터 (0~1)
+                group.maxSpeed = p.isPlayer ? 1.65 : 1.3 + Math.random() * 0.2;
+                group.progressT = 0;
                 group.laneOffset = (i % 2 === 0 ? 1 : -1) * (4 + Math.floor(i / 2) * 3);
 
-                // 출발점 뒤쪽 배열
-                const startT = (1 - (i * 12 / trackLen)) % 1;
+                const startT = (1 - (i * 14 / trackLen)) % 1;
                 group.progressT = startT;
 
                 const pt = trackCurve.getPointAt(startT);
@@ -314,19 +348,17 @@ game_html = """
                 if (kart.finished) return;
 
                 if (kart.info.isPlayer) {
-                    // 플레이어 물리 이동
-                    if (keys.left) kart.rotation.y += 0.04 * (kart.speed >= 0 ? 1 : -1);
-                    if (keys.right) kart.rotation.y -= 0.04 * (kart.speed >= 0 ? 1 : -1);
+                    if (keys.left) kart.rotation.y += 0.045 * (kart.speed >= 0 ? 1 : -1);
+                    if (keys.right) kart.rotation.y -= 0.045 * (kart.speed >= 0 ? 1 : -1);
 
                     if (keys.forward) {
-                        kart.speed = Math.min(kart.speed + 0.03, kart.maxSpeed);
+                        kart.speed = Math.min(kart.speed + 0.035, kart.maxSpeed);
                     } else if (keys.backward) {
                         kart.speed = Math.max(kart.speed - 0.03, -kart.maxSpeed / 2);
                     } else {
                         kart.speed *= 0.96;
                     }
 
-                    // 부스터
                     if (keys.boost && boostTimer === 0) {
                         boostTimer = 90;
                         kart.speed = kart.maxSpeed * 1.7;
@@ -335,7 +367,6 @@ game_html = """
 
                     kart.translateZ(kart.speed);
                 } else {
-                    // AI 자동 주행 경로 따라가기
                     kart.progressT = (kart.progressT + (kart.maxSpeed / trackCurve.getLength())) % 1;
                     const pt = trackCurve.getPointAt(kart.progressT);
                     const tan = trackCurve.getTangentAt(kart.progressT);
@@ -345,11 +376,11 @@ game_html = """
                     kart.rotation.y = Math.atan2(tan.x, tan.z);
                 }
 
-                // 체크포인트 및 바퀴(Lap) 수 체크
+                // 체크포인트 판정
                 const targetCP = checkpoints[kart.nextCP];
-                if (kart.position.distanceTo(targetCP) < 40) {
+                if (kart.position.distanceTo(targetCP) < 45) {
                     kart.nextCP = (kart.nextCP + 1) % totalCheckpoints;
-                    if (kart.nextCP === 1) { // 한 바퀴 완성
+                    if (kart.nextCP === 1) {
                         kart.lap++;
                         if (kart.info.isPlayer) {
                             document.getElementById("lapText").innerText = Math.min(kart.lap, totalLaps);
@@ -358,10 +389,7 @@ game_html = """
                             kart.finished = true;
                             rankCounter++;
                             kart.rank = rankCounter;
-
-                            if (kart.info.isPlayer || rankCounter === 1) {
-                                checkRaceEnd(kart);
-                            }
+                            checkRaceEnd(kart);
                         }
                     }
                 }
@@ -377,21 +405,19 @@ game_html = """
         }
 
         function updateRankings() {
-            // 주행 거리에 따른 실시간 순위 계산
             karts.sort((a, b) => {
                 if (a.lap !== b.lap) return b.lap - a.lap;
                 return b.nextCP - a.nextCP;
             });
-
             const currentRank = karts.findIndex(k => k.info.isPlayer) + 1;
             document.getElementById("rankText").innerText = currentRank;
         }
 
         function checkRaceEnd(finishedKart) {
             if (finishedKart.info.isPlayer) {
-                showWinnerModal(`🎉 ${finishedKart.info.name} ${finishedKart.rank}위 도착!`, `총 3바퀴 레이스를 완료했습니다!`);
+                showWinnerModal(`🎉 ${finishedKart.info.name} ${finishedKart.rank}위 도착!`, `3바퀴 완주 성공!`);
             } else if (rankCounter === 1) {
-                showWinnerModal(`🏆 ${finishedKart.info.name} 우승!`, `상대 포켓몬이 먼저 3바퀴를 완주했습니다.`);
+                showWinnerModal(`🏆 ${finishedKart.info.name} 우승!`, `상대 포켓몬이 먼저 완주했습니다.`);
             }
         }
 
@@ -404,7 +430,7 @@ game_html = """
 
         function updateCamera() {
             if (!playerKart) return;
-            const offset = new THREE.Vector3(0, 7, -16);
+            const offset = new THREE.Vector3(0, 8, -18);
             const cameraPos = offset.applyMatrix4(playerKart.matrixWorld);
             camera.position.lerp(cameraPos, 0.2);
             camera.lookAt(playerKart.position.x, playerKart.position.y + 2, playerKart.position.z);
