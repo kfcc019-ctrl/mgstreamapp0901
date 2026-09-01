@@ -20,9 +20,9 @@ game_html = """<!DOCTYPE html>
         }
 
         #startScreen {
-            pointer-events: auto; background: rgba(15, 15, 25, 0.9); padding: 30px 50px;
+            pointer-events: auto; background: rgba(15, 15, 25, 0.75); padding: 25px 45px;
             border-radius: 20px; text-align: center; border: 3px solid #FFD700;
-            box-shadow: 0 0 25px rgba(255,215,0,0.4);
+            box-shadow: 0 0 25px rgba(255,215,0,0.4); backdrop-filter: blur(4px);
         }
 
         .diff-btn {
@@ -32,7 +32,7 @@ game_html = """<!DOCTYPE html>
         .diff-btn.active { background: #FFD700; color: black; border-color: #FFD700; }
         
         #startBtn {
-            margin-top: 25px; padding: 15px 40px; font-size: 26px; font-weight: bold;
+            margin-top: 20px; padding: 14px 38px; font-size: 24px; font-weight: bold;
             color: #111; background: #00E5FF; border: none; border-radius: 50px;
             cursor: pointer; box-shadow: 0 6px 20px rgba(0,229,255,0.5); transition: 0.2s;
         }
@@ -67,7 +67,7 @@ game_html = """<!DOCTYPE html>
     <div id="ui-overlay">
         <div id="startScreen">
             <h2 style="color:#FFD700; margin-top:0;">🎮 AI 난이도 선택</h2>
-            <div style="margin-bottom: 20px;">
+            <div style="margin-bottom: 15px;">
                 <button class="diff-btn" onclick="selectDiff('EASY', this)">하 (쉬움)</button>
                 <button class="diff-btn active" onclick="selectDiff('MEDIUM', this)">중 (보통)</button>
                 <button class="diff-btn" onclick="selectDiff('HARD', this)">상 (매우 잘함)</button>
@@ -138,6 +138,9 @@ game_html = """<!DOCTYPE html>
             createStartFinishLine();
             createEnvironment();
             spawnPokemonKarts();
+
+            // 시작할 때부터 카트 후면 카메라 초기화
+            updateCamera();
 
             window.addEventListener("keydown", (e) => handleKey(e, true));
             window.addEventListener("keyup", (e) => handleKey(e, false));
@@ -326,7 +329,7 @@ game_html = """<!DOCTYPE html>
                     group.maxSpeed = 1.6;
                 } else {
                     if (selectedDifficulty === 'EASY') group.maxSpeed = 0.95 + Math.random() * 0.15;
-                    else if (selectedDifficulty === 'MEDIUM') group.maxSpeed = 1.35 + Math.random() * 0.15;
+                    else if (selectedDifficulty === 'MEDIUM') k.maxSpeed = 1.35 + Math.random() * 0.15;
                     else if (selectedDifficulty === 'HARD') group.maxSpeed = 1.80 + Math.random() * 0.15;
                 }
 
@@ -346,8 +349,6 @@ game_html = """<!DOCTYPE html>
 
                 if (p.isPlayer) playerKart = group;
             });
-
-            updateCamera();
         }
 
         function startCountdown() {
@@ -405,6 +406,7 @@ game_html = """<!DOCTYPE html>
             kart.progressT = bestT;
         }
 
+        // 벽 충돌 제어 (음수 속도 제거 및 정지 처리)
         function checkWallCollision(kart) {
             syncPlayerProgressT(kart);
 
@@ -421,7 +423,7 @@ game_html = """<!DOCTYPE html>
                 const clampedOffset = Math.sign(offset) * maxOffset;
                 kart.position.copy(pt).add(norm.multiplyScalar(clampedOffset));
                 kart.position.y = 0.25;
-                kart.speed = -kart.speed * 0.3;
+                kart.speed = 0; // 벽 충돌 시 즉시 정지 (음수 속도 방지로 조향 반전 차단)
             }
         }
 
@@ -440,15 +442,16 @@ game_html = """<!DOCTYPE html>
                 const currentMaxSpeed = kart.boosterActive > 0 ? kart.maxSpeed * 1.6 : kart.maxSpeed;
 
                 if (kart.info.isPlayer) {
-                    if (keys.left) kart.rotation.y += 0.025 * (kart.speed >= 0 ? 1 : -1);
-                    if (keys.right) kart.rotation.y -= 0.025 * (kart.speed >= 0 ? 1 : -1);
+                    // 고정된 조향각 (반전 없이 정방향 유지)
+                    if (keys.left) kart.rotation.y += 0.028;
+                    if (keys.right) kart.rotation.y -= 0.028;
 
                     if (keys.forward) {
                         kart.speed = Math.min(kart.speed + 0.035, currentMaxSpeed);
                     } else if (keys.backward) {
                         kart.speed = Math.max(kart.speed - 0.03, -currentMaxSpeed / 2);
                     } else {
-                        kart.speed *= 0.96;
+                        kart.speed *= 0.95;
                     }
 
                     if (keys.boost && kart.boosterCooldown === 0 && kart.boosterActive === 0) {
@@ -507,7 +510,6 @@ game_html = """<!DOCTYPE html>
             }
 
             updateRankings();
-            updateCamera();
         }
 
         function updateRankings() {
@@ -534,9 +536,10 @@ game_html = """<!DOCTYPE html>
             document.getElementById("winnerModal").style.display = "block";
         }
 
+        // 카트라이더 백뷰 카메라 위치 동기화
         function updateCamera() {
             if (!playerKart) return;
-            const offset = new THREE.Vector3(0, 7, -16);
+            const offset = new THREE.Vector3(0, 6, -15);
             const cameraPos = offset.applyMatrix4(playerKart.matrixWorld);
             camera.position.lerp(cameraPos, 0.2);
             camera.lookAt(playerKart.position.x, playerKart.position.y + 1.8, playerKart.position.z);
@@ -551,6 +554,7 @@ game_html = """<!DOCTYPE html>
         function animate() {
             requestAnimationFrame(animate);
             updatePhysics();
+            updateCamera(); // 시작 화면/카운트다운 중에도 플레이어 후면 시점 적용
             renderer.render(scene, camera);
         }
     </script>
