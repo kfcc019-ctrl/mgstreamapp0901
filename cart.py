@@ -4,7 +4,7 @@ import streamlit.components.v1 as components
 st.set_page_config(page_title="3D 새망이 카트라이더", layout="wide")
 
 st.title("🐤 3D 새마을금고 새망이 카트라이더: 리얼 서킷")
-st.write("난이도를 선택한 후 **레이스 시작**을 누르세요! (방향키: 조향/가속, **Space바**: 부스터, **ESC**: 일시정지)")
+st.write("난이도를 선택한 후 **레이스 시작**을 누르세요! (방향키: 조향/가속, **Shift**: 브레이크/감속, **Space**: 부스터, **ESC**: 일시정지)")
 
 game_html = """<!DOCTYPE html>
 <html>
@@ -88,6 +88,7 @@ game_html = """<!DOCTYPE html>
         <div id="hud">
             <div>🏁 순위: <span id="rankText" style="color:#FFD700;">1</span> / 7</div>
             <div>🔄 바퀴: <span id="lapText" style="color:#00E5FF;">1</span> / 3</div>
+            <div>🛑 브레이크: <span style="color:#FFD700;">Shift</span></div>
             <div>⚡ 부스터: <span id="boostText" style="color:#00FF00;">사용 가능 (Space)</span></div>
             <button class="hud-btn" onclick="pauseGame()">⏸️ 일시정지 (ESC)</button>
         </div>
@@ -130,7 +131,7 @@ game_html = """<!DOCTYPE html>
         let checkpoints = [];
         const trackWidth = 28;
 
-        const keys = { forward: false, backward: false, left: false, right: false, boost: false };
+        const keys = { forward: false, backward: false, left: false, right: false, boost: false, brake: false };
 
         init();
         animate();
@@ -448,7 +449,6 @@ game_html = """<!DOCTYPE html>
                 group.boosterCooldown = 0;
                 group.boosterActive = 0;
 
-                // AI 인공지능 관련 주행 파라미터
                 group.aiWobbleTimer = Math.random() * 100;
                 group.aiTargetOffset = group.laneOffset;
 
@@ -527,19 +527,21 @@ game_html = """<!DOCTYPE html>
             location.reload();
         }
 
+        // [입력 키 설정: Shift 키를 브레이크로 바인딩]
         function handleKey(e, isDown) {
             if (e.code === "ArrowUp") keys.forward = isDown;
             if (e.code === "ArrowDown") keys.backward = isDown;
             if (e.code === "ArrowLeft") keys.left = isDown;
             if (e.code === "ArrowRight") keys.right = isDown;
             if (e.code === "Space") keys.boost = isDown;
+            if (e.code === "ShiftLeft" || e.code === "ShiftRight") keys.brake = isDown; // Shift 키 브레이크
 
             if (isDown && e.code === "Escape") {
                 if (gameState === 'RACING') pauseGame();
                 else if (gameState === 'PAUSED') resumeGame();
             }
 
-            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space", "ShiftLeft", "ShiftRight"].includes(e.code)) e.preventDefault();
         }
 
         function syncProgressT(kart) {
@@ -557,7 +559,7 @@ game_html = """<!DOCTYPE html>
             kart.progressT = bestT;
         }
 
-        // [핵심 개선 1] 속도 비례 현실적 벽 충돌 물리
+        // 속도 비례 현실적 벽 충돌 물리
         function checkWallCollision(kart) {
             syncProgressT(kart);
 
@@ -572,28 +574,27 @@ game_html = """<!DOCTYPE html>
 
             if (Math.abs(offset) > maxOffset) {
                 const currentSpeed = Math.abs(kart.speed);
-                const isHighSpeed = currentSpeed > 0.85; // 고속 충돌 판정 기준
+                const isHighSpeed = currentSpeed > 0.85;
 
                 if (isHighSpeed) {
-                    // 고속 충돌: 물리 반발력으로 크게 튕겨남 + 차체 각도 틀어짐 + 큰 속도 손실
+                    // 고속 충돌: 물리 반발력으로 크게 튕겨남
                     const bounceDistance = Math.min(currentSpeed * 2.8, 4.2);
                     const clampedOffset = Math.sign(offset) * (maxOffset - bounceDistance);
                     kart.position.copy(pt).add(norm.multiplyScalar(clampedOffset));
 
-                    kart.speed = Math.max(0.08, kart.speed * 0.15); // 급격한 충격 감속
-                    kart.rotation.y += (offset > 0 ? -0.4 : 0.4); // 충격으로 회전
+                    kart.speed = Math.max(0.08, kart.speed * 0.15);
+                    kart.rotation.y += (offset > 0 ? -0.4 : 0.4);
                 } else {
-                    // 저속 충돌: 튕김 없이 벽면에 붙어 마찰 마찰 감속
+                    // 저속 충돌: 튕김 없이 부드러운 감속
                     const clampedOffset = Math.sign(offset) * (maxOffset - 0.2);
                     kart.position.copy(pt).add(norm.multiplyScalar(clampedOffset));
 
-                    kart.speed = Math.max(0.0, kart.speed * 0.45); // 부드러운 벽 마찰 감속
+                    kart.speed = Math.max(0.0, kart.speed * 0.45);
                 }
                 kart.position.y = 0.25;
             }
         }
 
-        // 차량 간 물리 충돌 연산
         function checkKartToKartCollisions() {
             const collisionRadius = 2.6;
 
@@ -612,11 +613,9 @@ game_html = """<!DOCTYPE html>
                         let pushDir = new THREE.Vector3().subVectors(k1.position, k2.position).normalize();
                         pushDir.y = 0;
 
-                        // 위치 밀려남
                         k1.position.add(pushDir.clone().multiplyScalar(overlap * 0.6));
                         k2.position.sub(pushDir.clone().multiplyScalar(overlap * 0.6));
 
-                        // 충돌 시 감속
                         k1.speed *= 0.55;
                         k2.speed *= 0.55;
 
@@ -642,8 +641,15 @@ game_html = """<!DOCTYPE html>
                 const currentMaxSpeed = kart.boosterActive > 0 ? kart.maxSpeed * 1.6 : kart.maxSpeed;
 
                 if (kart.info.isPlayer) {
-                    if (keys.left) kart.rotation.y += 0.028;
-                    if (keys.right) kart.rotation.y -= 0.028;
+                    let isTurning = false;
+                    if (keys.left) { kart.rotation.y += 0.028; isTurning = true; }
+                    if (keys.right) { kart.rotation.y -= 0.028; isTurning = true; }
+
+                    // [Shift 키 브레이크 물리]
+                    if (keys.brake) {
+                        if (kart.speed > 0) kart.speed = Math.max(0, kart.speed - 0.07);
+                        else if (kart.speed < 0) kart.speed = Math.min(0, kart.speed + 0.07);
+                    }
 
                     if (keys.forward) {
                         kart.speed = Math.min(kart.speed + 0.035, currentMaxSpeed);
@@ -651,6 +657,12 @@ game_html = """<!DOCTYPE html>
                         kart.speed = Math.max(kart.speed - 0.03, -currentMaxSpeed / 2);
                     } else {
                         kart.speed *= 0.95;
+                    }
+
+                    // [현실적 코너링 마찰 감속] 고속으로 코너 조향 시 물리적 속도 감소
+                    if (isTurning && Math.abs(kart.speed) > 0.4) {
+                        let corneringDrag = 0.018 * (Math.abs(kart.speed) / currentMaxSpeed);
+                        kart.speed *= (1.0 - corneringDrag);
                     }
 
                     if (keys.boost && kart.boosterCooldown === 0 && kart.boosterActive === 0) {
@@ -663,10 +675,9 @@ game_html = """<!DOCTYPE html>
                     checkWallCollision(kart);
 
                 } else {
-                    // [핵심 개선 2] 사람처럼 운전하는 인간형 AI (언더스티어 및 코너링 실수)
+                    // AI 조향 및 실수/코너링 감속 적용
                     kart.aiWobbleTimer++;
                     if (kart.aiWobbleTimer > 60 + Math.random() * 90) {
-                        // 난이도별 차선 미숙 오차 범위
                         let errorMagnitude = selectedDifficulty === 'EASY' ? 12 : (selectedDifficulty === 'MEDIUM' ? 7.5 : 3.5);
                         kart.aiTargetOffset = kart.laneOffset + (Math.random() - 0.5) * errorMagnitude;
                         kart.aiWobbleTimer = 0;
@@ -679,7 +690,6 @@ game_html = """<!DOCTYPE html>
 
                     syncProgressT(kart);
                     
-                    // 조향 회전각 제한(플레이어 수준인 0.025rad/프레임)
                     let lookAhead = selectedDifficulty === 'HARD' ? 0.018 : 0.011;
                     let targetT = (kart.progressT + lookAhead + 1) % 1;
                     let targetPt = trackCurve.getPointAt(targetT);
@@ -695,15 +705,18 @@ game_html = """<!DOCTYPE html>
                     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
                     while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-                    // 한 번에 크게 꺾지 못하고 차츰 꺾어 언더스티어 유발
                     let maxTurnRate = 0.026;
                     let actualTurn = Math.max(-maxTurnRate, Math.min(maxTurnRate, angleDiff * 0.1));
                     kart.rotation.y += actualTurn;
 
+                    // AI도 코너 조향 시 현실적인 가로 방향 감속 발생
+                    if (Math.abs(actualTurn) > 0.015 && Math.abs(kart.speed) > 0.5) {
+                        kart.speed *= 0.985;
+                    }
+
                     kart.speed = Math.min(kart.speed + 0.03, currentMaxSpeed);
                     kart.translateZ(kart.speed);
 
-                    // AI도 동일하게 벽 충돌 및 튕김 적용
                     checkWallCollision(kart);
                 }
 
