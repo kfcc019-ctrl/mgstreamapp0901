@@ -92,7 +92,6 @@ game_html = """<!DOCTYPE html>
             <button class="hud-btn" onclick="pauseGame()">⏸️ 일시정지 (ESC)</button>
         </div>
 
-        <!-- 일시정지 모달 -->
         <div id="pauseModal" class="modal-popup">
             <h1 style="color:#00B0FF; margin:0 0 15px 0;">⏸️ 일시정지</h1>
             <p style="font-size:18px; margin-bottom:20px;">경기가 잠시 멈췄습니다.</p>
@@ -100,7 +99,6 @@ game_html = """<!DOCTYPE html>
             <button class="modal-btn" style="background:#E53935;" onclick="restartGame()">🔄 처음으로</button>
         </div>
 
-        <!-- 완주 결과 모달 -->
         <div id="winnerModal" class="modal-popup">
             <h1 id="winnerText" style="color:#FFD700; margin:0 0 15px 0;">🎉 새망이 승리!</h1>
             <p id="winnerSubText" style="font-size:20px; margin:0;">3바퀴 완주 성공!</p>
@@ -327,11 +325,9 @@ game_html = """<!DOCTYPE html>
             }
         }
 
-        // 1. 세밀해진 캐릭터 디자인 메쉬 구현
         function createBirdKartModel(p) {
             const group = new THREE.Group();
 
-            // 바퀴 & 하부 카트
             const wheelGeom = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 16);
             const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
             [[-1.2, 1.0], [1.2, 1.0], [-1.2, -1.0], [1.2, -1.0]].forEach(pos => {
@@ -346,21 +342,18 @@ game_html = """<!DOCTYPE html>
             base.position.y = 0.35;
             group.add(base);
 
-            // 새망이 몸통 및 머리
             const birdBlueMat = new THREE.MeshStandardMaterial({ color: p.bodyColor, roughness: 0.2 });
             const body = new THREE.Mesh(new THREE.SphereGeometry(1.0, 16, 16), birdBlueMat);
             body.scale.set(1.0, 1.1, 1.0);
             body.position.set(0, 1.3, 0);
             group.add(body);
 
-            // 부리
             const beakMat = new THREE.MeshStandardMaterial({ color: 0xFF8C00 });
             const beak = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.6, 8), beakMat);
             beak.rotation.x = Math.PI / 2;
             beak.position.set(0, 1.25, 0.9);
             group.add(beak);
 
-            // 눈
             const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xFFFFFF });
             const eyeBlackMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
             [-0.35, 0.35].forEach(x => {
@@ -371,9 +364,7 @@ game_html = """<!DOCTYPE html>
                 group.add(eyeW, eyeB);
             });
 
-            // 각 캐릭터별 독보적 커스텀 디자인
             if (p.id === "leader") {
-                // 대장: 황금 왕관, 노란 셔츠, 빨간 볼터치, 망토
                 const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 0.5, 6), new THREE.MeshStandardMaterial({ color: 0xFFD700, metalness: 0.8 }));
                 crown.position.set(0, 2.3, 0);
                 const shirt = new THREE.Mesh(new THREE.CylinderGeometry(1.02, 1.02, 0.7, 16), new THREE.MeshStandardMaterial({ color: 0xFFD700 }));
@@ -384,7 +375,6 @@ game_html = """<!DOCTYPE html>
                 group.add(crown, shirt, c1, c2);
 
             } else if (p.id === "builder") {
-                // 건설: 노란 안전모, 안전 조끼, 망치
                 const helmet = new THREE.Mesh(new THREE.SphereGeometry(1.08, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xFFC107 }));
                 helmet.position.set(0, 1.6, 0);
                 const vest = new THREE.Mesh(new THREE.CylinderGeometry(1.02, 1.02, 0.6, 16), new THREE.MeshStandardMaterial({ color: 0xFF5722 }));
@@ -394,7 +384,6 @@ game_html = """<!DOCTYPE html>
                 group.add(helmet, vest, hammer);
 
             } else if (p.id === "scholar") {
-                // 학자: 학사모 + 금빛 수술, 안경, 정장 넥타이
                 const hatTop = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 1.5), new THREE.MeshStandardMaterial({ color: 0x212121 }));
                 hatTop.position.set(0, 2.35, 0);
                 const hatBase = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.3, 16), new THREE.MeshStandardMaterial({ color: 0x212121 }));
@@ -407,7 +396,6 @@ game_html = """<!DOCTYPE html>
                 group.add(hatTop, hatBase, glasses, glasses2, tie);
 
             } else if (p.id === "artist") {
-                // 화가: 빨간 베레모, 물감 팔레트
                 const beret = new THREE.Mesh(new THREE.SphereGeometry(0.85, 16, 16), new THREE.MeshStandardMaterial({ color: 0xD32F2F }));
                 beret.scale.set(1.2, 0.4, 1.2); beret.position.set(-0.2, 2.15, 0.1); beret.rotation.z = -0.3;
                 const palette = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.1), new THREE.MeshStandardMaterial({ color: 0x8D6E63 }));
@@ -415,7 +403,6 @@ game_html = """<!DOCTYPE html>
                 group.add(beret, palette);
 
             } else if (p.id === "farmer") {
-                // 농부: 밀짚모자, 멜빵바지
                 const strawHat = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 0.7, 0.2, 16), new THREE.MeshStandardMaterial({ color: 0xD7CCC8 }));
                 strawHat.position.set(0, 2.15, 0);
                 const overalls = new THREE.Mesh(new THREE.CylinderGeometry(1.02, 1.02, 0.7, 16), new THREE.MeshStandardMaterial({ color: 0x33691E }));
@@ -423,7 +410,6 @@ game_html = """<!DOCTYPE html>
                 group.add(strawHat, overalls);
 
             } else if (p.id === "suit") {
-                // 신사: 신사 펠트모자, 수트, 서류가방
                 const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.9, 0.8, 16), new THREE.MeshStandardMaterial({ color: 0x1A237E }));
                 hat.position.set(0, 2.2, 0);
                 const suit = new THREE.Mesh(new THREE.CylinderGeometry(1.02, 1.02, 0.7, 16), new THREE.MeshStandardMaterial({ color: 0x1A237E }));
@@ -433,7 +419,6 @@ game_html = """<!DOCTYPE html>
                 group.add(hat, suit, briefcase);
 
             } else if (p.id === "rocket") {
-                // 우주: 고글 헬멧, 로켓 부스터
                 const helmet = new THREE.Mesh(new THREE.SphereGeometry(1.15, 16, 16), new THREE.MeshStandardMaterial({ color: 0xE0E0E0, transparent: true, opacity: 0.8 }));
                 helmet.position.set(0, 1.45, 0);
                 const rocket = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.4, 12), new THREE.MeshStandardMaterial({ color: 0xFF5722 }));
@@ -463,15 +448,15 @@ game_html = """<!DOCTYPE html>
                 group.boosterCooldown = 0;
                 group.boosterActive = 0;
 
-                // AI 주행 실수를 위한 속성
+                // AI 인공지능 관련 주행 파라미터
                 group.aiWobbleTimer = Math.random() * 100;
                 group.aiTargetOffset = group.laneOffset;
 
                 if (p.isPlayer) {
                     group.maxSpeed = 1.6;
                 } else {
-                    if (selectedDifficulty === 'EASY') group.maxSpeed = 1.0 + Math.random() * 0.15;
-                    else if (selectedDifficulty === 'MEDIUM') group.maxSpeed = 1.4 + Math.random() * 0.15;
+                    if (selectedDifficulty === 'EASY') group.maxSpeed = 1.1 + Math.random() * 0.15;
+                    else if (selectedDifficulty === 'MEDIUM') group.maxSpeed = 1.45 + Math.random() * 0.15;
                     else if (selectedDifficulty === 'HARD') group.maxSpeed = 1.85 + Math.random() * 0.15;
                 }
 
@@ -500,8 +485,8 @@ game_html = """<!DOCTYPE html>
 
             karts.forEach(k => {
                 if (!k.info.isPlayer) {
-                    if (selectedDifficulty === 'EASY') k.maxSpeed = 1.0 + Math.random() * 0.15;
-                    else if (selectedDifficulty === 'MEDIUM') k.maxSpeed = 1.4 + Math.random() * 0.15;
+                    if (selectedDifficulty === 'EASY') k.maxSpeed = 1.1 + Math.random() * 0.15;
+                    else if (selectedDifficulty === 'MEDIUM') k.maxSpeed = 1.45 + Math.random() * 0.15;
                     else if (selectedDifficulty === 'HARD') k.maxSpeed = 1.85 + Math.random() * 0.15;
                 }
             });
@@ -572,7 +557,7 @@ game_html = """<!DOCTYPE html>
             kart.progressT = bestT;
         }
 
-        // 2. 강력해진 벽 반발력 (튕겨져 나가고 속도 감소)
+        // [핵심 개선 1] 속도 비례 현실적 벽 충돌 물리
         function checkWallCollision(kart) {
             syncProgressT(kart);
 
@@ -586,23 +571,31 @@ game_html = """<!DOCTYPE html>
             const maxOffset = (trackWidth / 2) - 1.2;
 
             if (Math.abs(offset) > maxOffset) {
-                // 강력한 안쪽 반발 위치 튕김
-                const bounceDistance = 3.2;
-                const clampedOffset = Math.sign(offset) * (maxOffset - bounceDistance);
-                kart.position.copy(pt).add(norm.multiplyScalar(clampedOffset));
+                const currentSpeed = Math.abs(kart.speed);
+                const isHighSpeed = currentSpeed > 0.85; // 고속 충돌 판정 기준
+
+                if (isHighSpeed) {
+                    // 고속 충돌: 물리 반발력으로 크게 튕겨남 + 차체 각도 틀어짐 + 큰 속도 손실
+                    const bounceDistance = Math.min(currentSpeed * 2.8, 4.2);
+                    const clampedOffset = Math.sign(offset) * (maxOffset - bounceDistance);
+                    kart.position.copy(pt).add(norm.multiplyScalar(clampedOffset));
+
+                    kart.speed = Math.max(0.08, kart.speed * 0.15); // 급격한 충격 감속
+                    kart.rotation.y += (offset > 0 ? -0.4 : 0.4); // 충격으로 회전
+                } else {
+                    // 저속 충돌: 튕김 없이 벽면에 붙어 마찰 마찰 감속
+                    const clampedOffset = Math.sign(offset) * (maxOffset - 0.2);
+                    kart.position.copy(pt).add(norm.multiplyScalar(clampedOffset));
+
+                    kart.speed = Math.max(0.0, kart.speed * 0.45); // 부드러운 벽 마찰 감속
+                }
                 kart.position.y = 0.25;
-
-                // 속도 급감 (충돌 감속)
-                kart.speed = Math.max(0.1, kart.speed * 0.2);
-
-                // 차체 바깥쪽 반사 회전 충격
-                kart.rotation.y += (offset > 0 ? -0.35 : 0.35);
             }
         }
 
-        // 3. 차량 간 충돌 물리 및 감속 처리
+        // 차량 간 물리 충돌 연산
         function checkKartToKartCollisions() {
-            const collisionRadius = 2.6; // 충돌 판정 거리
+            const collisionRadius = 2.6;
 
             for (let i = 0; i < karts.length; i++) {
                 for (let j = i + 1; j < karts.length; j++) {
@@ -617,19 +610,18 @@ game_html = """<!DOCTYPE html>
                         let overlap = collisionRadius - dist;
 
                         let pushDir = new THREE.Vector3().subVectors(k1.position, k2.position).normalize();
-                        pushDir.y = 0; // 평면 튕김
+                        pushDir.y = 0;
 
-                        // 서로 밀려남 (위치 튕김 보정)
+                        // 위치 밀려남
                         k1.position.add(pushDir.clone().multiplyScalar(overlap * 0.6));
                         k2.position.sub(pushDir.clone().multiplyScalar(overlap * 0.6));
 
-                        // 충돌 시 양쪽 모두 속도 감속 물리 적용
+                        // 충돌 시 감속
                         k1.speed *= 0.55;
                         k2.speed *= 0.55;
 
-                        // 충돌 회전 충격
-                        k1.rotation.y += (Math.random() - 0.5) * 0.2;
-                        k2.rotation.y += (Math.random() - 0.5) * 0.2;
+                        k1.rotation.y += (Math.random() - 0.5) * 0.25;
+                        k2.rotation.y += (Math.random() - 0.5) * 0.25;
                     }
                 }
             }
@@ -671,10 +663,11 @@ game_html = """<!DOCTYPE html>
                     checkWallCollision(kart);
 
                 } else {
-                    // 4. AI 실감나는 비완벽 주행 (실수로 핸들 흔들림 및 벽/차량 충돌)
+                    // [핵심 개선 2] 사람처럼 운전하는 인간형 AI (언더스티어 및 코너링 실수)
                     kart.aiWobbleTimer++;
-                    if (kart.aiWobbleTimer > 80 + Math.random() * 80) {
-                        let errorMagnitude = selectedDifficulty === 'EASY' ? 10 : (selectedDifficulty === 'MEDIUM' ? 6 : 2.5);
+                    if (kart.aiWobbleTimer > 60 + Math.random() * 90) {
+                        // 난이도별 차선 미숙 오차 범위
+                        let errorMagnitude = selectedDifficulty === 'EASY' ? 12 : (selectedDifficulty === 'MEDIUM' ? 7.5 : 3.5);
                         kart.aiTargetOffset = kart.laneOffset + (Math.random() - 0.5) * errorMagnitude;
                         kart.aiWobbleTimer = 0;
                     }
@@ -685,7 +678,9 @@ game_html = """<!DOCTYPE html>
                     }
 
                     syncProgressT(kart);
-                    let lookAhead = selectedDifficulty === 'HARD' ? 0.018 : 0.012;
+                    
+                    // 조향 회전각 제한(플레이어 수준인 0.025rad/프레임)
+                    let lookAhead = selectedDifficulty === 'HARD' ? 0.018 : 0.011;
                     let targetT = (kart.progressT + lookAhead + 1) % 1;
                     let targetPt = trackCurve.getPointAt(targetT);
                     let tan = trackCurve.getTangentAt(targetT);
@@ -700,12 +695,15 @@ game_html = """<!DOCTYPE html>
                     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
                     while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-                    kart.rotation.y += angleDiff * 0.08; // 자연스러운 조향 조절
+                    // 한 번에 크게 꺾지 못하고 차츰 꺾어 언더스티어 유발
+                    let maxTurnRate = 0.026;
+                    let actualTurn = Math.max(-maxTurnRate, Math.min(maxTurnRate, angleDiff * 0.1));
+                    kart.rotation.y += actualTurn;
 
                     kart.speed = Math.min(kart.speed + 0.03, currentMaxSpeed);
                     kart.translateZ(kart.speed);
 
-                    // AI도 벽과 충돌하도록 설정!
+                    // AI도 동일하게 벽 충돌 및 튕김 적용
                     checkWallCollision(kart);
                 }
 
@@ -727,7 +725,6 @@ game_html = """<!DOCTYPE html>
                 }
             });
 
-            // 차량 간 충돌 연산 적용
             checkKartToKartCollisions();
 
             const bText = document.getElementById("boostText");
